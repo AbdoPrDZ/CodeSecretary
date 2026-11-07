@@ -11,7 +11,7 @@ The **device-facing cloud entry point** and **system of record**:
 - Raw batch archive in object storage.
 - Serve agent configuration.
 - Enqueue engine jobs.
-- **Owns all Postgres migrations** for every service.
+- **Owns the Postgres schema** for every service (ORM models + SQL, D15).
 
 It does not calculate time and does not serve the dashboard.
 
@@ -19,43 +19,57 @@ It does not calculate time and does not serve the dashboard.
 
 ```
 warehouse/
-├─ Cargo.toml                # secretary-warehouse
-├─ migrations/               # sqlx migrations — ALL tables, RLS policies
-└─ src/
-   ├─ main.rs                # Axum server, config, graceful shutdown
-   ├─ db.rs                  # pool, per-request RLS context (SET LOCAL app.user_id)
+├─ pyproject.toml            # secretary-warehouse (Python 3.13, FastAPI, secretary-orm)
+├─ Dockerfile
+├─ tests/                    # pytest: config, HTTP, RLS (fresh DB per test, app role)
+└─ src/secretary_warehouse/
+   ├─ __main__.py            # CLI: serve (default) | migrate | plan
+   ├─ config.py              # env config
+   ├─ telemetry.py           # text / JSON logging
+   ├─ db.py                  # user_transaction / system_transaction (SET LOCAL app.user_id)
+   ├─ http.py                # FastAPI app: /healthz, /readyz, /v1/...
+   ├─ schema/                # ALL tables for every service
+   │  ├─ models/             # ORM models (columns, indexes, FKs, checks)
+   │  ├─ sql/pre.sql         # roles, partitioned activity_events shell
+   │  └─ sql/post.sql        # RLS helpers + policies, grants, partitions, special indexes
    ├─ auth/                  # Keycloak JWT validation (JWKS cache), sub → user, sid → device
    ├─ device/                # register, revoke check
    ├─ ingest/                # batch handler, validation, dedupe, clock offset
-   ├─ archive/               # S3-compatible writer (object_store crate)
+   ├─ archive/               # S3-compatible writer
    ├─ config_api/            # GET /v1/agent/config
    ├─ heartbeat/
-   ├─ jobs.rs                # enqueue (user_id, local_day) with debounce key
-   └─ ratelimit.rs
+   ├─ jobs.py                # enqueue (user_id, local_day) with debounce key
+   └─ ratelimit.py
 ```
 
-## 3. Database (owned migrations)
+## 3. Database (owned schema, D15)
 
-Created in Phase 1 even if used later, so tenancy is never retrofitted:
+Created in Phase 1 even if used later, so tenancy is never retrofitted. One ORM model module per area in `schema/models/`:
 
-| Migration | Tables |
+| Module | Tables |
 |---|---|
-| 0001_identity | `users`, `workspaces`, `memberships`, `invitations` |
-| 0002_devices | `devices`, `device_authorizations` |
-| 0003_events | `activity_events` (partitioned monthly by device `timestamp_start`, see rules) |
-| 0004_projects | `projects`, `project_links`, `project_mappings`, `exclusions`, `rule_proposals` |
-| 0005_derived | `event_assignments`, `work_sessions`, `session_evidence`, `coverage_gaps` |
-| 0006_corrections | `assignment_overrides`, `time_adjustments` |
-| 0007_jobs | `processing_jobs` |
-| 0008_ai | `ai_classifications`, `ai_request_log` (Phase 2 use) |
-| 0009_team | `submissions`, `audit_log` (Phase 3 use) |
+| identity | `users`, `user_identities`, `workspaces`, `memberships`, `invitations` |
+| devices | `devices` (one per Keycloak device session, `auth_session_id`) |
+| events | `activity_events` (partitioned monthly by device `timestamp_start`, see rules) |
+| projects | `projects`, `project_links`, `project_mappings`, `exclusions`, `rule_proposals` |
+| derived | `event_assignments`, `work_sessions`, `session_evidence`, `coverage_gaps` |
+| corrections | `assignment_overrides`, `time_adjustments` |
+| jobs | `processing_jobs` |
+| ai | `ai_classifications`, `ai_request_log` (Phase 2 use) |
+| team | `submissions`, `audit_log` (Phase 3 use) |
+
+**How it is applied:** `migrate()` (CLI `secretary-warehouse migrate`, or at startup when `DATABASE_MIGRATION_URL` is set) runs as the owner in one transaction, under an advisory lock: `pre.sql` → ORM sync (columns, indexes, then constraints: FKs from `ondelete`, selection CHECKs, `_sql_constraints`) → `post.sql`. Everything is idempotent. The ORM refuses type changes that can lose data and never drops columns unless `--allow-drop` is passed; `secretary-warehouse plan` previews the ORM part.
 
 **Rules:**
 
-- Every tenant table: `user_id` and/or `workspace_id`, RLS enabled, policy in the same migration.
-- `activity_events`: primary key `(event_id, timestamp_start)` handles de-duplication. Postgres requires the partition key in every unique key, and `timestamp_start` (unlike `server_adjusted_start`) never changes for a given event. Index on `(user_id, server_adjusted_start)`.
+- Every table has a `bigserial` `id` plus `created_at` / `updated_at` (ORM standard columns, `DEFAULT now()`). Natural keys are `UNIQUE` constraints. Agent-supplied event IDs stay UUIDv7 (`event_id`).
+- Every tenant table: `user_id` and/or `workspace_id`, RLS enabled and policy in `post.sql`, added together with its model.
+- `activity_events`: primary key `(id, timestamp_start)`; `UNIQUE (event_id, timestamp_start)` handles de-duplication. Postgres requires the partition key in every unique key, and `timestamp_start` (unlike `server_adjusted_start`) never changes for a given event. Index on `(user_id, server_adjusted_start)`.
 - `activity_events` is **insert-only** for the app role (no UPDATE/DELETE grants); deletion only via the privacy-delete procedure.
-- Partition maintenance: `app_ensure_event_partitions(months_back, months_ahead)`; the migration creates 12 back + 3 ahead. No default partition.
+- Partition maintenance: `app_ensure_event_partitions(months_back, months_ahead)`; every migration ensures 12 back + 3 ahead. No default partition.
+- Sign-in: `app_resolve_identity(issuer, subject, email, name)` (SECURITY DEFINER) maps a Keycloak account to a user and provisions the user + personal workspace on first sight. The app role cannot insert into `users` directly.
+- Index names in SQL end in `_ix` / `_ux`: the ORM drops undeclared indexes named `<table>_<column>_idx`.
+- `sys_model` / `sys_field` (ORM bookkeeping for rename detection) are owner-only, no RLS, no grants.
 - No RLS on `processing_jobs` (system queue, holds only `(user_id, local_day)`); every other table has RLS.
 - Object storage: MinIO no longer publishes free images (late 2025). Choose an S3-compatible replacement for local dev/self-hosting in WH-6.
 
@@ -74,9 +88,9 @@ Device login happens entirely in Keycloak (device authorization grant). Device r
 
 ### 4.1 Batch Ingest Flow
 
-1. Validate the access token → `(user_id, device_id)` (see §4.2); reject if the device is revoked or unregistered.
+1. Validate the access token → `(user_id, device_id)` (see §4.2); reject if the device is revoked or unregistered. All DB work for the batch runs in `user_transaction(user_id)`.
 2. Decompress; enforce size limits.
-3. Validate each event with `shared::validate`; collect rejections.
+3. Validate each event against the JSON Schema generated from `shared/` (SH-9) plus the same semantic checks; collect rejections.
 4. Compute `server_adjusted_*` = device timestamps − reported clock offset.
 5. Write raw batch to object storage: `raw/{user_id}/{yyyy}/{mm}/{dd}/{batch_id}.json.gz`.
 6. `INSERT … ON CONFLICT (event_id) DO NOTHING` in one transaction; collect duplicates.
@@ -88,11 +102,11 @@ Raw archive write happens before DB insert; if DB insert fails, the archive allo
 ### 4.2 Token Handling (Keycloak, D14)
 
 - Access tokens are Keycloak JWTs (RS256). Check signature against the realm JWKS (cached, refetched on unknown `kid`), `iss`, `exp`/`nbf` (≤ 30 s leeway), `aud` contains `secretary-warehouse`, and `azp = secretary-agent`.
-- `sub` → `users.id` via `user_identities (provider = issuer, subject = sub)` in a SECURITY DEFINER function; first sight provisions the user and their personal workspace.
+- `sub` → `users.id` via `app_resolve_identity()` (SECURITY DEFINER); first sight provisions the user and their personal workspace.
 - `sid` (the Keycloak offline session created by the device login) → `devices.id`. One device per `sid`; re-login creates a new session and device row.
 - `(sub, sid) → (user_id, device_id, revoked)` cached ≤ 60 s; revocation also evicts the cache entry.
 - Never log tokens or full claims.
-- WH-4 adds a migration: `devices.auth_session_id` (unique) replaces `token_hash`/`token_prefix`; `device_authorizations` is dropped.
+- `devices.auth_session_id` (unique) already exists (WH-1R); there is no `device_authorizations` table.
 
 ## 5. Tasks
 
@@ -100,9 +114,10 @@ Raw archive write happens before DB insert; if DB insert fails, the archive allo
 
 | ID | Task | Milestone | Acceptance |
 |---|---|---|---|
-| WH-1 | Crate skeleton, Axum server, config (env), health endpoints, tracing | M0 | Boots in Docker Compose |
-| WH-2 | Migrations 0001–0009 with RLS policies | M0 | `sqlx migrate run` clean; RLS enabled on all tenant tables |
+| WH-1 | Service skeleton, HTTP server, config (env), health endpoints, logging | M0 | Boots in Docker Compose |
+| WH-2 | Schema for every table with RLS policies | M0 | Migration clean and idempotent; RLS enabled on all tenant tables |
 | WH-3 | DB access layer with per-transaction RLS context | M0 | Queries without context return nothing |
+| WH-1R | Port WH-1–3 to Python: FastAPI + `secretary-orm`, ORM owns the schema (D15) | M0 | Same acceptance as WH-1–3; Compose healthy; RLS tests pass as the app role |
 | WH-4 | Keycloak token validation + device registration (`/v1/auth/config`, `POST /v1/devices`), Keycloak in Compose with realm import | M1 | Agent signs in via Keycloak device flow and registers; forged/expired/wrong-audience tokens → 401; revoked device → 401 |
 | WH-5 | Batch ingest (validate, dedupe, clock offset, insert) | M1 | Re-sending a batch creates no duplicates |
 | WH-6 | Raw archive writer (S3-compatible local store TBD, S3/R2 in prod) | M1 | Every accepted batch archived; replay tool restores DB from archive |
@@ -131,7 +146,7 @@ Raw archive write happens before DB insert; if DB insert fails, the archive allo
 | ID | Task |
 |---|---|
 | WH-30 | Workspace-level policies included in agent config |
-| WH-31 | Self-hosting: configurable object store (MinIO), migrations on startup, documented env vars |
+| WH-31 | Self-hosting: configurable object store, schema migration on startup, documented env vars |
 
 ## 6. Testing
 
@@ -152,6 +167,6 @@ Raw archive write happens before DB insert; if DB insert fails, the archive allo
 
 | Risk | Mitigation |
 |---|---|
-| RLS misconfiguration | Policy-in-same-migration rule; isolation test suite; app role without BYPASSRLS |
+| RLS misconfiguration | Policy added with the model; test fails if any table lacks RLS; isolation test suite; app role without BYPASSRLS |
 | Partition growth | Monthly partitions + retention job |
 | Archive and DB diverge | Archive-first write; periodic reconciliation job (Phase 2) |

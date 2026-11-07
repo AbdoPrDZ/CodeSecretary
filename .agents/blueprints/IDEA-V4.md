@@ -492,12 +492,12 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 | Browser extension | WebExtensions + Native Messaging |
 | Shell hooks | Bash, Zsh, Fish, PowerShell |
 | Shared schema & redaction | Rust crate (`shared/`), compiled into agent, ingest, and engine |
-| Ingest API | Rust (e.g., Axum) |
+| Ingest API | Python (FastAPI + uvicorn) on `secretary-orm` (D15) |
 | Processing engine | Rust worker |
 | System of record | PostgreSQL (with RLS, monthly partitions) |
 | Job queue | Postgres-based (SKIP LOCKED / pgmq) |
 | Raw archive | S3-compatible object storage (S3, R2, MinIO) |
-| Dashboard API | Rust (Axum) or TypeScript — one backend language preferred: **Rust** |
+| Dashboard API | Python (FastAPI) sharing the warehouse's ORM models (D15) |
 | Dashboard UI | React + TypeScript (Vite) |
 | Auth | **Keycloak** (OIDC) for all sign-in: dashboard (auth code + PKCE), agent (OAuth 2.0 device authorization grant, offline token), GitHub/Google via identity brokering, company SSO (OIDC/SAML) in Phase 4. Services validate Keycloak JWTs (D14) |
 | Secrets / keys | KMS (cloud) or Vault/age-based keys (self-hosted) |
@@ -516,11 +516,12 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 | D6 | Redaction in the agent | Sensitive data never leaves the device unredacted |
 | D7 | Postgres, not a data warehouse | Volume is small (~1 GB/user/year); one database is simpler; add analytics store later if needed |
 | D8 | Postgres-based job queue | No extra infrastructure until scale demands it |
-| D9 | Rust across agent, ingest, engine with a shared crate | One schema and redaction implementation; no drift between components |
+| D9 | Rust for the agent and engine, with a shared crate (amended by D15) | One event schema and redaction implementation; no drift between components |
 | D10 | Dashboard never computes time | Results are stored, explainable, and identical for every viewer |
 | D11 | Self-hostable via Docker Compose | Companies can keep data on their own infrastructure |
 | D12 | Browser and editor extensions talk to the local agent, not the cloud | One authenticated upload path; redaction and buffering in one place |
 | D13 | AI off by default; stricter of user and workspace policy wins | Privacy-first; product must work on rules alone |
+| D15 | **Warehouse and dashboard API in Python on `secretary-orm`; the ORM owns the schema** (2026-11-07) | One model definition for every Python service, written in the owner's own ORM (from J-ERP); tables, columns, indexes, FKs and checks come from the models, while RLS policies, grants, partitions and SECURITY DEFINER functions stay in idempotent SQL run in the same migration transaction. The event contract reaches Python as JSON Schema generated from `shared/`. Cost: two backend languages; bigint ids instead of UUIDs (agent event IDs stay UUIDv7) |
 | D14 | **Keycloak is the identity provider for users and devices** (2026-11-07) | One standard auth system (OIDC, device grant, MFA, social login, enterprise SSO) instead of custom device tokens; self-hosters can reuse it. Cost: an extra JVM service in Compose, token refresh in the agent. Authorization (workspaces, roles, RLS) stays in Postgres |
 
 ---

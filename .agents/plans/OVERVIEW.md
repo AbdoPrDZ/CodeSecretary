@@ -12,16 +12,16 @@ The **user-facing** part of the platform: authentication, workspaces, projects a
 
 | Component | Folder | Technology |
 |---|---|---|
-| Dashboard API | `overview/api/` | Rust, Axum, sqlx |
+| Dashboard API | `overview/api/` | Python, FastAPI, `secretary-orm` (imports the warehouse's models, D15) |
 | Web app | `overview/web/` | React, TypeScript, Vite, TanStack Query, TanStack Router, a component library (e.g., shadcn/ui), a timeline/chart library |
 
 ## 3. API Structure
 
 ```
-overview/api/src/
-├─ main.rs
+overview/api/src/secretary_overview/
+├─ __main__.py
 ├─ auth/            # Keycloak OIDC client (auth code + PKCE), server-side sessions (HTTP-only secure cookies), CSRF
-├─ rls.rs           # per-request RLS context from session
+├─ rls.py           # per-request RLS context from session (user_transaction)
 ├─ workspaces/      # personal workspace on signup; teams in Phase 3
 ├─ devices/         # list, rename, revoke (also deletes the Keycloak offline session)
 ├─ projects/        # CRUD, project links, mappings, exclusions

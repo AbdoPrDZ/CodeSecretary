@@ -13,7 +13,7 @@ Status: planned. Source: blueprint §5, §9.1, §11.1; service plans.
 
 ## Device Login (Keycloak device authorization grant, D14)
 
-Agent reads the issuer from warehouse `GET /v1/auth/config` → requests a device code from Keycloak → user signs in on Keycloak's device page and confirms the code → agent polls Keycloak and receives an access token and an offline refresh token → refresh token stored in the OS keychain → agent calls `POST /v1/devices` to register this Keycloak session as a device. Access tokens are short-lived and refreshed silently. Revoking a device in Overview marks it revoked and ends its Keycloak session; the warehouse rejects it at once and the agent asks the user to sign in again.
+Agent reads the issuer from warehouse `GET /v1/auth/config` → requests a device code from Keycloak → user signs in on Keycloak's device page, confirms the code and grants access (consent screen) → agent polls Keycloak and receives an access token and an offline refresh token → refresh token stored in the OS keychain → agent calls `POST /v1/devices` to register this Keycloak session as a device. Access tokens are short-lived and refreshed silently. Revoking a device in Overview marks it revoked and ends its Keycloak session; the warehouse rejects it at once and the agent asks the user to sign in again.
 
 ## User Sign-in
 

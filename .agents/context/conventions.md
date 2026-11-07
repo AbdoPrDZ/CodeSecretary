@@ -11,19 +11,20 @@ Status: partially implemented. The root Cargo workspace (edition 2024, shared `[
 
 ```
 Cargo.toml (workspace) · docker-compose.yml · .github/workflows/
-shared/ · agent/{daemon,vscode,browser,shell}/ · warehouse/{src,migrations}/ · engine/ · overview/{api,web}/
+shared/ · agent/{daemon,vscode,browser,shell}/ · warehouse/{src/secretary_warehouse/schema,tests}/ · engine/ · overview/{api,web}/ · orm/ (Python package `secretary-orm`)
 .agents/{blueprints,plans,plans.progress,context,skills}/
 ```
 
 ## Tooling
 
-- **Rust:** one Cargo workspace; tokio, axum, sqlx (Postgres, compile-time checked), serde, tracing, thiserror/anyhow. `cargo fmt` + `cargo clippy -D warnings` must pass.
+- **Rust** (agent, engine, shared): one Cargo workspace; tokio, sqlx (engine), serde, tracing, thiserror/anyhow. `cargo fmt` + `cargo clippy -D warnings` must pass.
+- **Python** (warehouse, overview API, orm): 3.13, FastAPI + uvicorn, `secretary-orm`, exact pins in `pyproject.toml`, 2-space indent (J-ERP style), pytest against real Postgres.
 - **TypeScript:** pnpm workspaces; strict TS, ESLint, Prettier. Types shared with Rust are **generated** from `shared/` (`ts-rs`), never hand-copied.
 
 ## Rules Agents Must Follow
 
-- Contracts between services change only through `shared/` + a migration.
-- Every new tenant table gets an RLS policy **in the same migration** and an isolation test.
+- Contracts between services change only through `shared/` + the warehouse schema.
+- Every new tenant table gets an RLS policy in `post.sql` **in the same change as its model**, and an isolation test.
 - Any change to engine output requires updated golden fixtures and, if intentional, an `ALGORITHM_VERSION` bump.
 - Any event schema change bumps `schema_version`; warehouse accepts N and N-1.
 - **Never log event metadata** (titles, URLs, paths, commands) — IDs and counts only.
@@ -35,7 +36,7 @@ Unit · integration (testcontainers Postgres + MinIO) · engine golden tests · 
 
 ## Definition of Done
 
-Tests + CI green · contracts/migrations updated · no metadata in logs · RLS + isolation test for new tables · progress file updated (see `AGENTS.md`).
+Tests + CI green · contracts/schema updated · no metadata in logs · RLS + isolation test for new tables · progress file updated (see `AGENTS.md`).
 
 ## Git
 

@@ -33,8 +33,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p secretary-agent
 
-  # Server crates: Linux only, against a real Postgres (RLS tests run as the app role).
-  server:
+  # Python packages (orm, warehouse): Linux, against a real Postgres. The RLS
+  # tests run as an app login role, never as superuser.
+  python:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -48,19 +49,25 @@ jobs:
           --health-cmd "pg_isready -U secretary -d secretary"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
-      DATABASE_URL: postgres://secretary:secretary@localhost:5432/secretary
+      DATABASE_URL: postgresql://secretary:secretary@localhost:5432/secretary
+      ORM_TEST_DATABASE_URL: postgresql://secretary:secretary@localhost:5432/secretary
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --exclude secretary-agent
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -e ./orm -e "./warehouse[test]"
+      - run: python -m pytest -q orm/tests
+      - run: python -m pytest -q warehouse/tests
 
-  # WH-1 acceptance: the warehouse image builds and becomes ready in Docker Compose.
+  # WH-1R acceptance: the warehouse image builds, migrates and becomes ready in Docker Compose.
   compose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose up -d --build --wait warehouse
+      - run: docker compose up -d --build --wait warehouse keycloak
       - run: curl -fsS http://localhost:8080/readyz
+      # WH-4: the agent's Keycloak device login works and tokens carry what the warehouse checks.
+      - run: python3 deploy/keycloak/smoke_device_flow.py
       - if: failure()
         run: docker compose logs

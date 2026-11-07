@@ -22,9 +22,11 @@
   - Acceptance: `sqlx migrate run` clean; RLS enabled on all tenant tables
 - [x] WH-3 — DB access layer with per-transaction RLS context · 2026-11-06 · Db::begin_for_user / begin_unscoped; 14 RLS tests as app role (no-context = empty, no leak across pooled tx)
   - Acceptance: queries without context return nothing
+- [x] WH-1R — Port warehouse to Python (FastAPI + `secretary-orm`, ORM owns the schema; D15) · 2026-11-07 · Rust crate + sqlx migrations removed (history: f6d22db); 22 tenant tables with RLS, 42 FKs, 30 checks, 16 partitions; migrate() idempotent (restart = 0 changes); 35 warehouse tests (RLS as app role) + 69 orm tests; Compose healthy; CI job switched to Python
+  - Acceptance: same behaviour as WH-1–3: boots in Compose, /healthz + /readyz, schema created by ORM + post-sync SQL, RLS tests pass as the app role
 
 ### M1
-- [ ] WH-4 — Keycloak token validation + device registration, Keycloak in Compose
+- [ ] WH-4 — Keycloak token validation + device registration, Keycloak in Compose · 🚧 in progress · 2026-11-07 · step 1 done: Keycloak 26.4.2 in Compose (own DB), `secretary` realm import (agent device-grant client with audience mapper, dashboard PKCE client, dev user), `deploy/keycloak/smoke_device_flow.py` passes 14/14 and runs in CI; next: token validation, `/v1/auth/config`, `POST /v1/devices`
   - Acceptance: agent signs in via Keycloak device flow and registers; bad tokens → 401; revoked device → 401
 - [ ] WH-5 — Batch ingest (validate, dedupe, clock offset, insert)
   - Acceptance: re-sending a batch creates no duplicates
@@ -68,4 +70,8 @@
 ## Notes
 - 2026-11-06: MinIO images are no longer published (pull denied). Removed from compose; pick an S3-compatible store in WH-6.
 - 2026-11-06: CI `server` and `compose` jobs not yet run on GitHub (repo not pushed).
-- 2026-11-07: Decision D14 — Keycloak replaces warehouse-issued device tokens. WH-4 rescoped; `device_authorizations` and `devices.token_*` (0002) are replaced by a new migration in WH-4.
+- 2026-11-07: Decision D14 — Keycloak replaces warehouse-issued device tokens. WH-4 rescoped.
+- 2026-11-07: Decision D15 — warehouse rewritten in Python on `secretary-orm`; the ORM owns the schema. WH-1–3 stay ticked as history; WH-1R carries the current implementation. Ids are now bigserial (event_id stays UUIDv7). The D14 schema change is already in: `devices.auth_session_id`, no `device_authorizations`. Added early: `app_resolve_identity()` (sign-in provisioning; WH-4 still owns token validation).
+- 2026-11-07: ORM changes needed for this: UUID/time/smallint fields, real FKs (`ondelete`), selection CHECKs, `_sql_constraints`, NULL for `default=None`, `DEFAULT now()` on auto timestamps.
+- 2026-11-07: Keycloak findings: users imported from a realm file get no default roles (no `offline_access` → `not_allowed`), so the dev user lists `default-roles-secretary`; the device grant always shows a consent page; login cookies are `Secure` even over http://localhost.
+- 2026-11-07: Local dev database reset (`public` schema dropped; it held only the old sqlx bookkeeping, no data) so the new schema could be created.

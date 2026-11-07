@@ -23,15 +23,15 @@ Deliver the **Personal MVP (Phase 1)** first: one user, several devices, accurat
 |---|---|---|---|
 | **Shared** | `shared/` | Event schema, validation, redaction, config types — one source of truth | Rust crate |
 | **Agent** | `agent/` | Collect, redact, buffer, upload (daemon + tray + VS Code / browser / shell integrations) | Rust, TypeScript, shell |
-| **Warehouse** | `warehouse/` | Device auth, ingest API, Postgres system of record, raw archive, **owner of DB migrations** | Rust (Axum, sqlx) |
+| **Warehouse** | `warehouse/` | Device auth, ingest API, Postgres system of record, raw archive, **owner of the DB schema** | Python (FastAPI, `secretary-orm`) |
 | **Engine** | `engine/` | Job queue worker: correlation, time calculation, AI | Rust (sqlx) |
-| **Overview** | `overview/` | User auth, dashboard API, React web app: review, corrections, reports, teams | Rust (Axum) + React/TS |
+| **Overview** | `overview/` | User auth, dashboard API, React web app: review, corrections, reports, teams | Python (FastAPI, `secretary-orm`) + React/TS |
 
 ## 3. Repository Layout
 
 ```
 Secretary/
-├─ Cargo.toml                 # Rust workspace: shared, agent, warehouse, engine, overview/api
+├─ Cargo.toml                 # Rust workspace: shared, agent, engine
 ├─ docker-compose.yml         # Local dev: postgres, keycloak, object storage, warehouse, engine, overview
 ├─ .github/workflows/         # CI
 ├─ shared/                    # crate: secretary-shared
@@ -41,11 +41,11 @@ Secretary/
 │  ├─ browser/                # WebExtension (TS) — Phase 2
 │  └─ shell/                  # Shell hooks — Phase 2
 ├─ warehouse/
-│  ├─ src/                    # crate: secretary-warehouse (ingest + device API)
-│  └─ migrations/             # ALL Postgres migrations (sqlx)
+│  └─ src/secretary_warehouse/ # Python: device API, ingest; schema/ = ORM models + SQL (ALL tables)
+├─ orm/                       # Python package secretary-orm (from J-ERP)
 ├─ engine/                    # crate: secretary-engine
 ├─ overview/
-│  ├─ api/                    # crate: secretary-overview-api
+│  ├─ api/                    # Python: secretary-overview-api (FastAPI)
 │  └─ web/                    # React + Vite + TypeScript
 └─ .agents/
    ├─ blueprints/
@@ -54,7 +54,7 @@ Secretary/
 
 ## 4. Cross-Service Contracts
 
-These contracts are the boundaries between services. Change them only through `shared/` and a migration, never ad hoc.
+These contracts are the boundaries between services. Change them only through `shared/` and the warehouse schema (`warehouse/src/secretary_warehouse/schema/`), never ad hoc.
 
 | Contract | Producer → Consumer | Defined in |
 |---|---|---|
@@ -63,7 +63,7 @@ These contracts are the boundaries between services. Change them only through `s
 | **Agent config** (exclusions, project roots, pause windows) | Overview (edit) → Warehouse `GET /v1/agent/config` → Agent | `shared/` types, DB tables |
 | **Device API** (auth config, register, batch, heartbeat) | Agent ↔ Warehouse | [WAREHOUSE.md §4](WAREHOUSE.md) |
 | **Identity** (OIDC, device grant, realm `secretary`) | Keycloak → Agent, Overview, Warehouse | `deploy/keycloak/` realm export (D14) |
-| **Database schema** | Warehouse migrations → all services | `warehouse/migrations/` |
+| **Database schema** | Warehouse schema (ORM models + SQL) → all services | `warehouse/src/secretary_warehouse/schema/` |
 | **Processing jobs** `(user_id, local_day, reason)` | Warehouse / Overview enqueue → Engine | `processing_jobs` table |
 | **Derived data** (assignments, sessions, evidence) | Engine → Overview | DB tables (read-only for Overview) |
 | **Corrections** (assignments, adjustments, mappings) | Overview → Engine (via jobs) | DB tables + job enqueue |
@@ -79,7 +79,7 @@ These contracts are the boundaries between services. Change them only through `s
 
 | # | Milestone | Services | Result |
 |---|---|---|---|
-| **M0** | Foundations | all | Workspace, CI, Docker Compose, empty services boot, migrations run |
+| **M0** | Foundations | all | Workspace, CI, Docker Compose, empty services boot, schema migrates |
 | **M1** | Event pipeline end-to-end | shared, agent, warehouse | Agent logs in via device flow and uploads heartbeats + presence events into Postgres |
 | **M2** | Phase 1 collectors | agent | Presence/focus, Git (+ backfill), VS Code extension producing real events |
 | **M3** | Engine v1 | engine | Rule-based correlation + deterministic sessions for (user, day) |
@@ -124,9 +124,14 @@ Detailed tasks for each phase are in the service plans.
 
 ### 7.1 Rust
 
-- Single Cargo workspace; shared dependency versions in the root `Cargo.toml`.
-- `tokio` runtime, `axum` for HTTP, `sqlx` (Postgres, compile-time checked queries), `serde`, `tracing`, `thiserror`/`anyhow`.
+- Agent, engine and `shared/`. Single Cargo workspace; shared dependency versions in the root `Cargo.toml`.
+- `tokio` runtime, `sqlx` for the engine's database access, `serde`, `tracing`, `thiserror`/`anyhow`.
 - `cargo fmt`, `cargo clippy -D warnings` required in CI.
+
+### 7.1b Python
+
+- Warehouse and overview API (D15): Python 3.13, FastAPI + uvicorn, `secretary-orm` (`orm/`) on psycopg 3. Exact dependency pins in each `pyproject.toml`.
+- Tests with pytest against a real Postgres; RLS tests run as an app login role.
 
 ### 7.2 TypeScript
 
@@ -136,8 +141,8 @@ Detailed tasks for each phase are in the service plans.
 
 ### 7.3 Database
 
-- All migrations in `warehouse/migrations/`, forward-only, numbered.
-- Every tenant-scoped table has `user_id` and/or `workspace_id` and an **RLS policy** in the same migration that creates it.
+- The schema is the warehouse's ORM models plus `schema/sql/pre.sql` and `post.sql`, applied by one idempotent `migrate()` on every deployment (D15). The ORM blocks changes that can lose data unless explicitly allowed.
+- Every tenant-scoped table has `user_id` and/or `workspace_id` and an **RLS policy** in `post.sql`, added in the same change that adds its model.
 - Services connect with a role that is subject to RLS; set `app.user_id` / `app.workspace_id` per transaction.
 
 ### 7.4 Testing
@@ -179,7 +184,7 @@ Detailed tasks for each phase are in the service plans.
 ## 9. Definition of Done (any task)
 
 - Code merged with tests; CI green.
-- Contracts updated in `shared/` and migrations if touched.
+- Contracts updated in `shared/` and the warehouse schema if touched.
 - No raw metadata in logs.
 - RLS policy present for new tenant tables; isolation test added.
 - Relevant plan checkbox ticked and blueprint updated if a decision changed.

@@ -2,7 +2,7 @@
 
 **CodeSecretary** automatically tracks developer work time per project. A local agent collects redacted activity evidence (presence, editor, Git, terminal, browser) and uploads it to a cloud platform that deterministically reconstructs work sessions, lets users correct them, and (later) shares submitted time with teams — without surveillance.
 
-**Stage:** early implementation. The Cargo workspace, the `agent/daemon` skeleton (AG-1), the warehouse foundations (WH-1–3: server, all migrations with RLS, Docker Compose) and CI exist. Shared, engine and overview are not started.
+**Stage:** early implementation. The Cargo workspace (agent), the `agent/daemon` skeleton (AG-1), the `orm/` package, the Python warehouse foundations (WH-1R: FastAPI server, ORM-owned schema with RLS, Docker Compose) and CI exist. Shared, engine and overview are not started.
 
 ## Start Here
 
@@ -26,9 +26,10 @@
 |---|---|
 | `shared/` | Event schema, validation, redaction (Rust crate) |
 | `agent/` | Local daemon + VS Code / browser / shell integrations |
-| `warehouse/` | Device auth, ingest API, storage, **all DB migrations** |
+| `warehouse/` | Device auth, ingest API, storage, **the DB schema for every service** (Python, D15) |
 | `engine/` | Correlation + time calculation (the only place time is computed) |
 | `overview/` | User API + React dashboard |
+| `orm/` | `secretary-orm`: single-database Python ORM extracted from J-ERP; used by the warehouse (and later the overview API) |
 
 ## Non-Negotiable Rules
 
@@ -36,9 +37,9 @@
 - **Deterministic engine.** AI never sets durations. Output changes require golden-test updates and an `ALGORITHM_VERSION` bump.
 - **Redact in the agent** before data is buffered or sent. Never collect file contents, keystrokes, clipboard, or screenshots.
 - **Never log event metadata** (titles, URLs, paths, commands).
-- **Multi-tenant from day one.** Every tenant table has RLS in the same migration plus an isolation test. Tenant identity comes from the token/session, never the payload.
+- **Multi-tenant from day one.** Every tenant table has RLS (policy in `post.sql`, added with its model) plus an isolation test. Tenant identity comes from the token/session, never the payload.
 - **Private until submitted.** No feature may expose one user's raw activity to another user or admin.
-- **Contracts** change only through `shared/` + migrations.
+- **Contracts** change only through `shared/` + the warehouse schema.
 
 Full conventions: [.agents/context/conventions.md](.agents/context/conventions.md).
 
@@ -52,7 +53,7 @@ Full conventions: [.agents/context/conventions.md](.agents/context/conventions.m
 - Never tick a task whose acceptance criteria are not verified.
 - **Update progress while working, not at the end.** The progress files must reflect the real state at every point, so work that stops halfway is still visible:
   - Mark `🚧` **before** writing the first line of code for a task, not after.
-  - Tick each sub-item (e.g., a single migration) as soon as it is verified, not in one batch when the whole task is done.
+  - Tick each sub-item (e.g., a single model or table) as soon as it is verified, not in one batch when the whole task is done.
   - Record deviations, decisions, and surprises in the progress file's **Notes** in the same step they happen.
   - When a decision or plan change rescopes a task, update that task's line and acceptance in the progress file right away, and fix any other task lines it makes stale.
   - Before ending a turn, re-read the progress lines you touched and make sure they match what was actually done and verified.
@@ -72,7 +73,7 @@ Full conventions: [.agents/context/conventions.md](.agents/context/conventions.m
 | [structure.md](.agents/context/structure.md) | What each context file is for, what must not go in it, when to create new files |
 | [architecture.md](.agents/context/architecture.md) | Services, data flow, write ownership, stack |
 | [conventions.md](.agents/context/conventions.md) | Naming, repo layout, tooling, testing, git rules |
-| [database.md](.agents/context/database.md) | Data categories, RLS and migration rules |
+| [database.md](.agents/context/database.md) | Data categories, RLS and schema rules |
 | [api.md](.agents/context/api.md) | API surfaces, auth per surface, contract rules |
 | [workflows.md](.agents/context/workflows.md) | Event lifecycle, device login, recalculation, corrections, submissions |
 | [domains/](.agents/context/domains/README.md) | `time-calculation`, `privacy`, `tenancy` |

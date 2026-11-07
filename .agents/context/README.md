@@ -4,7 +4,7 @@ AI-readable memory for this project. Read this before substantial work; keep it 
 
 **CodeSecretary** — a local agent collects developer activity evidence; a cloud platform turns it into explainable, correctable time per project for individuals and (later) teams.
 
-**Project stage:** early implementation. The agent daemon skeleton (AG-1) and the warehouse foundations (WH-1–3: server, schema with RLS, Docker Compose) exist. Shared, engine and overview are not started. Files marked `Status: planned` describe intended design, not code.
+**Project stage:** early implementation. The agent daemon skeleton (AG-1), the `secretary-orm` package and the Python warehouse foundations (WH-1R: FastAPI server, ORM-owned schema with RLS, Docker Compose) exist. Shared, engine and overview are not started. Files marked `Status: planned` describe intended design, not code.
 
 ## Reading Order
 
@@ -19,7 +19,7 @@ README.md → config.md → structure.md → files for your task → source code
 | Any task | [architecture.md](architecture.md), [conventions.md](conventions.md) |
 | Agent / collectors | architecture, [domains/privacy.md](domains/privacy.md), [workflows.md](workflows.md) |
 | Ingest / device API | [api.md](api.md), [workflows.md](workflows.md), [domains/privacy.md](domains/privacy.md) |
-| Database / migrations | [database.md](database.md), [domains/tenancy.md](domains/tenancy.md) |
+| Database / schema | [database.md](database.md), [domains/tenancy.md](domains/tenancy.md) |
 | Engine / time calculation | [domains/time-calculation.md](domains/time-calculation.md), [database.md](database.md) |
 | Dashboard / API for users | [api.md](api.md), [domains/tenancy.md](domains/tenancy.md), [workflows.md](workflows.md) |
 | Teams, roles, sharing | [domains/tenancy.md](domains/tenancy.md), [domains/privacy.md](domains/privacy.md) |

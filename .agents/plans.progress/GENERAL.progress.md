@@ -15,7 +15,7 @@
 | Phase / Milestone | Status | Updated |
 |---|---|---|
 | Phase 0 — Validation | In progress | presence/focus probe (AG-0.1) verified on Windows |
-| M0 — Foundations | In progress | workspace, CI, agent skeleton (AG-1), warehouse WH-1–3 done; shared/engine/overview M0 pending |
+| M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done; shared/engine/overview M0 pending |
 | M1 — Event pipeline end-to-end | Not started | — |
 | M2 — Phase 1 collectors | Not started | — |
 | M3 — Engine v1 | Not started | — |
@@ -41,9 +41,9 @@
 ## Phase 1 — Milestones
 
 ### M0 — Foundations
-- [ ] Root Cargo workspace (`shared`, `agent/daemon`, `warehouse`, `engine`, `overview/api`)
+- [ ] Root Cargo workspace (`shared`, `agent/daemon`, `engine`) — agent in; shared/engine pending. Python packages: `orm`, `warehouse` (overview/api later, D15)
 - [ ] pnpm workspace (`agent/vscode`, `overview/web`)
-- [ ] `docker-compose.yml` (Postgres 16, MinIO, warehouse, engine, overview)
+- [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres + warehouse in
 - [ ] CI: fmt, clippy, tests, TS lint/test, web build
 - [ ] SHARED M0 tasks done
 - [ ] AGENT M0 tasks done
@@ -137,3 +137,5 @@
 | 2026-11-06 | Phase 0: `secretary-agent probe` (AG-0.1) works on Windows; macOS/Linux pending manual runs |
 | 2026-11-06 | Warehouse M0 done (WH-1–3): Axum skeleton, migrations 0001–0009 with RLS, RLS-scoped DB layer, Docker Compose |
 | 2026-11-07 | Decision D14: Keycloak for user and device auth; WH-4, AG-2, OV-2, OV-4, OV-44, SH-7 rescoped |
+| 2026-11-07 | `orm/`: single-database Python ORM (`secretary-orm`) extracted from J-ERP; 61 unit + 4 Postgres integration tests pass; not wired into any service (no task ID) |
+| 2026-11-07 | Decision D15: warehouse (and later overview API) in Python on `secretary-orm`, ORM owns the schema; WH-1R done (Compose healthy, RLS tests pass) |

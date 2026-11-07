@@ -1,19 +1,19 @@
 # Build from the repository root:  docker build -f warehouse/Dockerfile .
-FROM rust:1-bookworm AS build
+FROM python:3.13-slim AS build
 WORKDIR /src
-COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p secretary-warehouse \
-    && cp target/release/secretary-warehouse /usr/local/bin/
+COPY orm ./orm
+COPY warehouse ./warehouse
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir ./orm ./warehouse
 
-FROM debian:bookworm-slim
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 10001 secretary
-COPY --from=build /usr/local/bin/secretary-warehouse /usr/local/bin/secretary-warehouse
+FROM python:3.13-slim
+RUN useradd --system --uid 10001 secretary
+COPY --from=build /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 USER secretary
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fsS http://localhost:8080/healthz || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=2)" || exit 1
 ENTRYPOINT ["secretary-warehouse"]

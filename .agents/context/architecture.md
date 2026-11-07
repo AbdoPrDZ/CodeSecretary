@@ -21,9 +21,10 @@ Shell hooks ─┘   collect · redact ·                    │ enqueue (user, 
 
 | Service | Does | Never does |
 |---|---|---|
-| `shared/` | Event schema, validation, redaction, config/API types (Rust crate; TS types generated) | I/O, DB, HTTP |
+| `shared/` | Event schema, validation, redaction, config/API types (Rust crate; TS types and JSON Schema generated) | I/O, DB, HTTP |
 | `agent/` | Collect, redact, buffer (SQLite), upload; presence/focus, Git, FS collectors; hosts local API for extensions | Calculate time; talk to DB |
-| `warehouse/` | Device auth, ingest, dedupe, archive, agent config, enqueue jobs; **owns all migrations** | Calculate time; serve dashboard |
+| `warehouse/` | Device auth, ingest, dedupe, archive, agent config, enqueue jobs; **owns the DB schema** (Python, D15) | Calculate time; serve dashboard |
+| `orm/` | `secretary-orm`: single-database Python ORM (from J-ERP) used by the Python services | Service logic |
 | `engine/` | Correlate events → projects; build sessions; AI (Phase 2) | Serve HTTP to users |
 | `overview/` | User sessions, workspaces, projects, corrections, reports, teams | **Compute time** — reads engine output only |
 | Keycloak (infra) | Identity: sign-in, device grant, social login brokering, SSO (D14) | Authorization — workspaces/roles stay in Postgres |
@@ -57,7 +58,7 @@ Status: implemented (AG-1 skeleton). Source: `agent/daemon/src/`.
 
 ## Stack
 
-Rust (agent, warehouse, engine, overview API; Axum, sqlx, tokio) · TypeScript (VS Code ext, browser ext, React + Vite web) · PostgreSQL · S3-compatible storage (MinIO locally) · SQLite in the agent · Docker Compose.
+Rust (agent, engine, `shared/`; tokio, sqlx) · Python 3.13 (warehouse, overview API; FastAPI, uvicorn, `secretary-orm` on psycopg 3 — D15) · TypeScript (VS Code ext, browser ext, React + Vite web) · PostgreSQL · S3-compatible storage (local store TBD, WH-6) · Keycloak · SQLite in the agent · Docker Compose.
 
 ## Deployment Shape
 

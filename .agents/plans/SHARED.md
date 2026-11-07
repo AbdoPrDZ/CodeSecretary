@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-A Rust crate (`secretary-shared`) that is the **single source of truth** for everything more than one service must agree on. Compiled into the agent, warehouse, engine, and overview API. TypeScript types are generated from it for the VS Code extension, browser extension, and web app.
+A Rust crate (`secretary-shared`) that is the **single source of truth** for everything more than one service must agree on. Compiled into the agent and engine. TypeScript types are generated from it for the VS Code extension, browser extension, and web app, and a JSON Schema of the event envelope and device API for the Python warehouse and overview (D15).
 
 ## 2. Scope
 
@@ -93,7 +93,7 @@ pub struct Event {
 | SH-6 | URL stripping and remote URL normalization | M1 | Table-driven tests incl. edge cases |
 | SH-7 | Device API types (auth config, register, batch, heartbeat, config) | M1 | Used by agent and warehouse without duplication |
 | SH-8 | AgentConfig + Appendix A defaults | M1 | Defaults match blueprint |
-| SH-9 | TS type generation (`ts-rs`) → `agent/vscode`, `overview/web` | M1 | CI fails if generated types are stale |
+| SH-9 | Type generation: TS (`ts-rs`) → `agent/vscode`, `overview/web`; JSON Schema (`schemars`) → warehouse, overview API | M1 | CI fails if generated types or schemas are stale |
 
 ### Phase 2
 
