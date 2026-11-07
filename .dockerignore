@@ -1,0 +1,9 @@
+target/
+**/node_modules/
+.git/
+.agents/
+.claude/
+.vscode/
+**/*.log
+.env
+.env.*

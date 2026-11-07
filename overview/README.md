@@ -1,0 +1,1 @@
+the overview dashboard that get logs from the warehouse and trait them and calculate costs per project

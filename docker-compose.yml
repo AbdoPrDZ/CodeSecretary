@@ -1,0 +1,48 @@
+# Local development stack. Dev-only credentials — never reuse them elsewhere.
+#
+#   docker compose up -d --build
+#   curl http://localhost:8080/readyz
+#
+# Engine and overview services are added by their M0 tasks. S3-compatible
+# object storage for the raw archive is added with WH-6 (MinIO no longer
+# publishes free container images; pick a replacement then).
+
+name: secretary
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: secretary            # table owner; runs migrations
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secretary}
+      POSTGRES_DB: secretary
+      WAREHOUSE_DB_PASSWORD: ${WAREHOUSE_DB_PASSWORD:-warehouse}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secretary -d secretary"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  warehouse:
+    build:
+      context: .
+      dockerfile: warehouse/Dockerfile
+    environment:
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_DB_PASSWORD:-warehouse}@postgres:5432/secretary
+      DATABASE_MIGRATION_URL: postgres://secretary:${POSTGRES_PASSWORD:-secretary}@postgres:5432/secretary
+      WAREHOUSE_BIND: 0.0.0.0:8080
+      LOG_FORMAT: json
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
