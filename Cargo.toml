@@ -25,6 +25,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 serde_json = "1"
 secretary-shared = { path = "shared" }
+regex = "1"
+url = "2"
 
 # Engine (Rust). Warehouse and overview are Python (D15).
 sqlx = { version = "0.9", default-features = false, features = [

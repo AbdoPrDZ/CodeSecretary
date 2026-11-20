@@ -12,6 +12,8 @@ File contents · keystroke content · clipboard · screenshots/screen recording 
 
 ## Redaction (in the agent, before buffering)
 
+Status: implemented (SH-5, SH-6; used by the agent pipeline, AG-6). Source: `shared/src/redact/`; corpus `shared/fixtures/redaction-corpus-v1.json`. The terminal rule is Phase 2 (SH-21).
+
 - Implemented once in `shared/` and used by the agent (and validated server-side).
 - Terminal: command **name** only by default (e.g., `git push`, `npm run`); arguments are opt-in per project and still secret-masked.
 - URLs: drop query, fragment, userinfo; token-like path segments → `:id`.
@@ -19,7 +21,10 @@ File contents · keystroke content · clipboard · screenshots/screen recording 
 - Secret patterns (API keys, tokens, JWTs, `Bearer …`, `*_KEY=…`, credentialed connection strings, private key headers) are masked everywhere.
 - Paths are sent repo-relative plus repository root. Validation (`shared/`, mirrored in the warehouse) rejects absolute, `~` and `..` editor paths.
 - **Exclusions and pause windows** are applied in the agent before buffering, so excluded activity never reaches disk. Matching is case-insensitive and generous: over-matching only hides data. Status: implemented (AG-7).
-- Redaction rules are versioned; every change is validated by the redaction corpus test (zero survivors).
+- Redaction rules are versioned (`REDACTION_VERSION`); every change is validated by the redaction corpus test (zero survivors), in `shared/` and again through the agent pipeline.
+- Git remotes are normalized to `host/owner/repo`, which also drops credentials.
+- Over-masking is accepted (e.g. long hex strings in titles); under-masking is a bug.
+- The corpus holds fake secrets split into parts, so the repository never contains a contiguous token.
 
 ## Visibility
 

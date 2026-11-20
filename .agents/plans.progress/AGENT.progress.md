@@ -25,7 +25,7 @@
   - Acceptance: offline 1 h → all events delivered exactly once on reconnect
 - [x] AG-5 — Heartbeat · 2026-11-14 · every 60 s (first after 1 s): version, queue depth, clock offset; offset = round-trip midpoint − `server_time`; E2E: devices.last_seen_at and queue_depth updated
   - Acceptance: every 60 s with version, queue depth, clock offset
-- [ ] AG-6 — Pipeline: validate → exclusions → redact → buffer · 🚧 in progress · 2026-11-20 · `pipeline.rs`: validate (shared) → exclusions → pause windows → buffer; presence uses it; 8 tests; left: redact step + corpus test on the agent path (needs SH-5)
+- [x] AG-6 — Pipeline: validate → exclusions → redact → buffer · 2026-11-20 · `pipeline.rs`: validate → exclusions (raw event) → pause windows → redact (`secretary_shared::redact`) → validate again → buffer; presence uses it; 9 tests incl. the shared corpus (145 secrets) through the pipeline, checking the SQLite file + WAL bytes: zero survive (the run found e-mails surviving in non-title fields → `redact_text` now masks e-mails everywhere); E2E on Windows + Compose: presence still uploads
   - Acceptance: redaction corpus passes on the agent path
 - [x] AG-7 — Config fetch + cache, apply exclusions and pause · 2026-11-20 · `remote_config.rs`: `GET /v1/agent/config` every 5 min with `If-None-Match`, cached in `agent_config.json` (used from startup, offline and signed out), `PauseWatch` emits `agent.pause`/`agent.resume` (`exclusion_window`); pipeline applies path/app exclusions and cuts intervals at pause edges; tests: 3 cache + 8 pipeline + 2 mock-server; E2E on Windows + Compose: pause 14:33–14:35 local → pause/resume stored, presence interval cut into 13:32:45–13:33:00 and 13:35:00–13:37:45 UTC; exclusion added while running → applied after 4 min 44 s
   - Acceptance: dashboard change applies within 5 min
@@ -58,7 +58,7 @@
 - [x] Refresh token only in OS keychain; access token only in memory · 2026-11-14 · state.json, logs and stdout checked: no tokens; keychain entry removed on logout and sign-out
 - [ ] Local API bound to 127.0.0.1, token required, `Origin` rejected
 - [ ] Local port/token file readable by current user only
-- [ ] Redaction before buffer write
+- [x] Redaction before buffer write · 2026-11-20 · pipeline redacts every event before `Buffer::push`; corpus test reads the buffer files
 - [ ] No event metadata in logs
 - [ ] Signed binaries and updates
 

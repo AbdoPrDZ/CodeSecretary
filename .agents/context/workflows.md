@@ -13,7 +13,7 @@ Status: device login and the agent → warehouse upload path implemented (M1 dem
 
 Implemented so far:
 
-- **Agent side:** the step-2 pipeline exists without the redact step, which waits for SH-5. So far only the presence collector uses it.
+- **Agent side:** the step-2 pipeline is complete: validate → exclusions → pause → redact → validate again → buffer. Exclusions match the raw event, before redaction. So far only the presence collector uses the pipeline.
   - **Exclusions:** an event touching an excluded path or app is dropped whole.
   - **Pause windows:** device local time. Point events inside a window are dropped; intervals are cut at the window edges. `agent.pause` / `agent.resume` (`exclusion_window`) mark the edges.
   - **Config:** cached in `agent_config.json`, so it applies from the first event after a restart and while signed out or offline. It is refetched every 5 min with the `ETag`.

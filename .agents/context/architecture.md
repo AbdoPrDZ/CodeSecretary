@@ -67,7 +67,7 @@ Status: implemented (AG-1 skeleton, AG-2/3/5/7; AG-4, AG-6 and AG-8 in progress)
 - Stable exit codes: 0 ok, 1 failure, 2 config, 3 already running.
 - **Components (`run`):**
   - `presence`: a blocking thread polling idle time every 5 s; it emits intervals into the pipeline.
-  - `pipeline` (not a task): validate → exclusions → pause windows → (redact, SH-5) → buffer. Every collector goes through it; nothing else writes to the buffer.
+  - `pipeline` (not a task): validate → exclusions → pause windows → redact → validate → buffer. Every collector goes through it; nothing else writes to the buffer.
   - `config`: `GET /v1/agent/config` every 5 min with the cached `ETag`.
   - `pause`: checks local time every 5 s and emits `agent.pause` / `agent.resume` at pause-window edges.
   - `uploader`: buffer → `POST /v1/events:batch`.

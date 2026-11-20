@@ -16,7 +16,7 @@
 |---|---|---|
 | Phase 0 — Validation | In progress | presence/focus probe (AG-0.1) verified on Windows |
 | M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done, `shared` crate in (SH-1 awaiting CI); engine/overview M0 pending |
-| M1 — Event pipeline end-to-end | In progress | demo works on Windows: agent signs in via Keycloak, uploads heartbeats + presence events (AG-2/3/5/7, WH-4/5/8/9, SH-2/3/4/8 done; AG-4 1 h offline run, AG-6 redact step, WH-6/7/10/11, SH-5/6/7/9, OV M1 left) |
+| M1 — Event pipeline end-to-end | In progress | demo works on Windows: agent signs in via Keycloak, uploads heartbeats + presence events (AG-2/3/5/6/7, WH-4/5/8/9, SH-2–6/8 done; AG-4 1 h offline run, WH-6/7/10/11, SH-7/9, OV M1 left) |
 | M2 — Phase 1 collectors | Not started | — |
 | M3 — Engine v1 | Not started | — |
 | M4 — Dashboard v1 | Not started | — |
@@ -142,3 +142,4 @@
 | 2026-11-14 | M1 started: `shared` crate (SH-2, SH-3), warehouse device API (WH-4, WH-5, WH-8), agent Keycloak login + SQLite buffer + uploader + heartbeat + presence collector (AG-2, AG-3, AG-5 done; AG-4, AG-8 in progress). M1 demo passes on Windows |
 | 2026-11-20 | M1: validation (SH-4) and `AgentConfig` + Appendix A defaults (SH-8) in `shared`; `GET /v1/agent/config` with ETag (WH-9); agent config fetch/cache, exclusions and pause windows (AG-7); pipeline without redaction (AG-6 in progress, needs SH-5) |
 | 2026-11-20 | Decision D16: Android app (collector + companion) in Phase 2, no iOS; tasks AG-27–29, SH-23, WH-24, EN-28, OV-24 added |
+| 2026-11-20 | M1: redaction engine + corpus (SH-5), URL stripping + remote normalization (SH-6), agent pipeline redacts before buffering (AG-6 done) |

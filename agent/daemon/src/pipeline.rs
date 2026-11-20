@@ -11,14 +11,17 @@
 //! - **Pause windows** (AG-7): point events inside a window are dropped;
 //!   intervals are cut so only the parts outside every window remain.
 //!   `agent.*` events are exempt (they report the pause itself).
-//! - **Redact**: not yet — the redaction engine is SH-5. Until it lands,
-//!   only metadata-free collectors (presence) may use the pipeline.
+//! - **Redact** with `secretary_shared::redact` (SH-5), then validate
+//!   again (masking changes lengths), so nothing unredacted is buffered.
+//!   Exclusions run on the raw event first: patterns name real paths and
+//!   apps, not their redacted forms.
 
 use std::sync::Arc;
 
 use chrono::{DateTime, Duration as TimeDelta, Local, TimeZone, Utc};
 use secretary_shared::config::{AgentConfig, Exclusions};
 use secretary_shared::event::Payload;
+use secretary_shared::redact;
 use secretary_shared::validate::{self, Invalid};
 use secretary_shared::{Event, EventId};
 use tracing::{debug, warn};
@@ -75,7 +78,13 @@ impl Pipeline {
         if pieces.is_empty() {
             return Outcome::Paused;
         }
-        // Redaction (SH-5) goes here, before anything touches disk.
+        let mut pieces = pieces;
+        for piece in &mut pieces {
+            redact::redact(piece);
+            if let Err(reason) = validate::validate(piece, now) {
+                return Outcome::Invalid(reason);
+            }
+        }
         for piece in &pieces {
             if let Err(err) = self.buffer.push(piece) {
                 warn!(error = %format!("{err:#}"), "could not buffer an event");
@@ -414,6 +423,64 @@ mod tests {
             }),
         );
         assert_eq!(f.pipeline.process(pause, now(), &Utc), Outcome::Buffered(1));
+    }
+
+    /// The shared redaction corpus (SH-5), run through the agent path: no
+    /// secret reaches the buffer file, in any field the agent fills.
+    #[test]
+    fn redaction_corpus_never_reaches_the_buffer() {
+        #[derive(serde::Deserialize)]
+        struct Corpus {
+            items: Vec<Item>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Item {
+            template: String,
+            secret: Vec<String>,
+        }
+        let corpus: Corpus = serde_json::from_str(include_str!(
+            "../../../shared/fixtures/redaction-corpus-v1.json"
+        ))
+        .unwrap();
+        assert!(corpus.items.len() >= 100);
+
+        let f = fixture(AgentConfig::default());
+        let at = ts("2026-11-20T09:00:00Z");
+        let mut secrets = Vec::new();
+        for item in &corpus.items {
+            let secret = item.secret.concat();
+            let text = item.template.replace("{s}", &secret);
+            let mut focus = Event::new(
+                Source::new("agent", "0.1.0"),
+                at,
+                Some(at + TimeDelta::seconds(30)),
+                Payload::WindowFocus(WindowFocus {
+                    app: Some("Code.exe".into()),
+                    title: Some(text.clone()),
+                }),
+            );
+            focus.project_hint = Some(text.chars().take(200).collect());
+            let outcome = f.pipeline.process(focus, now(), &Utc);
+            assert_eq!(outcome, Outcome::Buffered(1), "{}", item.template);
+            secrets.push(secret);
+        }
+
+        let stored = serde_json::to_string(&f.buffer.peek(1000).unwrap()).unwrap();
+        // The database file and its WAL, byte for byte.
+        let mut raw = Vec::new();
+        for entry in std::fs::read_dir(f._dir.path()).unwrap() {
+            raw.extend(std::fs::read(entry.unwrap().path()).unwrap());
+        }
+        let raw = String::from_utf8_lossy(&raw);
+        let survivors: Vec<&String> = secrets
+            .iter()
+            .filter(|s| stored.contains(s.as_str()) || raw.contains(s.as_str()))
+            .collect();
+        assert!(
+            survivors.is_empty(),
+            "{} secrets reached the buffer:\n{survivors:#?}",
+            survivors.len()
+        );
     }
 
     #[test]

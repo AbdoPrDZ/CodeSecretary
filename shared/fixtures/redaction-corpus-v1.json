@@ -1,0 +1,1330 @@
+{
+ "version": 1,
+ "note": "Fake, generated secrets (gen_redaction_corpus.py, seed 20261120). Each secret is split into parts; join them and substitute into {s}. After redaction the joined secret must not appear. Benign titles must come out unchanged.",
+ "items": [
+  {
+   "kind": "aws_access_key",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "AKIA27",
+    "Y0NI0G1",
+    "1ITN3XV"
+   ]
+  },
+  {
+   "kind": "aws_access_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "AKIAZX",
+    "UYXXA9P",
+    "W017D7X"
+   ]
+  },
+  {
+   "kind": "aws_access_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "AKIA4X",
+    "A3C7TGN",
+    "KEJVSV0"
+   ]
+  },
+  {
+   "kind": "aws_access_key",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "AKIA8L",
+    "AFD3YPT",
+    "DW9DIHC"
+   ]
+  },
+  {
+   "kind": "aws_access_key",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "AKIA82",
+    "T8609UU",
+    "33G8G6X"
+   ]
+  },
+  {
+   "kind": "aws_access_key",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "AKIA20",
+    "S9WR3D8",
+    "11000PT"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "ghp_pGrl8NAbT",
+    "1FUlQZoA2zhfJ",
+    "WuPV2FhsR4gQlb"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "ghp_LKuPPyQ1r",
+    "IHNOjGj9le0j7",
+    "nXZ1Kh6f1dRkPK"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "{s}",
+   "secret": [
+    "gho_et6cGmdzJ",
+    "NNSMFuNJ4OuRb",
+    "AC7Cqn1gxoJ50b"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "{s}",
+   "secret": [
+    "gho_cYtMYkZKr",
+    "mSi7sQi078kcG",
+    "1LzEFlT1P6fSSr"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "ghu_vQrPEDTxv",
+    "V0cTrxGS98CXL",
+    "wrAv5YynXZuepr"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "{s}",
+   "secret": [
+    "ghu_STqO61SBz",
+    "gW0uBV49L65Xt",
+    "zr4QXv03RiZ38W"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "ghs_oOpjfK0CU",
+    "CtriuByuz3kcT",
+    "Z3pAlWlYIpKSyg"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "ghs_1abTajQNZ",
+    "g0rOh6KDl1DYm",
+    "SkMQ5ocPmboHpk"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "ghr_QQfb1HGg3",
+    "h0E88Hi6eFq89",
+    "dlZPQHnZ9xJyD4"
+   ]
+  },
+  {
+   "kind": "github_token",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "ghr_9d0RNlvCj",
+    "s5k4Mn8m6BdSO",
+    "lQnxivX30SOxYQ"
+   ]
+  },
+  {
+   "kind": "github_pat",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "github_pat_3g3qTlAZkK2V3382ok1h",
+    "Zr_IZtSix42ZBb8a2vEs81Y3odyg9y2",
+    "8VML6nWvCvpq27SRBCtdEqds7xui1iV"
+   ]
+  },
+  {
+   "kind": "github_pat",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "github_pat_4S4vyQqiP3g1qLw1uoed",
+    "Z9_AGTJ7TqD2kYL1qWPbiu4PgN2xpWY",
+    "DCTqhs99At8mztcr5NQcx53zCSI4cHk"
+   ]
+  },
+  {
+   "kind": "github_pat",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "github_pat_ReP66m0xeTM4Eb825gWG",
+    "4P_BxkgZRDTc8uI3CqiiKUwSA6HKwUM",
+    "ztUL3h9UYKV4HkWycYu1B5sGxJFrUGr"
+   ]
+  },
+  {
+   "kind": "gitlab_pat",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "glpat-O5",
+    "Kd3393m67",
+    "7h3BP2JLS"
+   ]
+  },
+  {
+   "kind": "gitlab_pat",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "glpat-4a",
+    "1_O_h1blR",
+    "7lq2SML6O"
+   ]
+  },
+  {
+   "kind": "gitlab_pat",
+   "template": "{s}",
+   "secret": [
+    "glpat-9M",
+    "75_2DqhUP",
+    "g0IN-Eoh6"
+   ]
+  },
+  {
+   "kind": "gitlab_pat",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "glpat--m",
+    "l0whELKlR",
+    "I6dWbx5w_"
+   ]
+  },
+  {
+   "kind": "slack_token",
+   "template": "{s}",
+   "secret": [
+    "xoxb-624491173105-",
+    "958809662042-BXB14",
+    "hsw272cQmHxFvQ209yE"
+   ]
+  },
+  {
+   "kind": "slack_token",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "xoxp-147217929344-",
+    "235486630391-nP4ZP",
+    "75V0TayrULrNdvJgHZ9"
+   ]
+  },
+  {
+   "kind": "slack_token",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "xoxa-104104427801-",
+    "492042975170-mLQzU",
+    "nc4hQ8q8BpVm5P5ZE9N"
+   ]
+  },
+  {
+   "kind": "slack_token",
+   "template": "{s}",
+   "secret": [
+    "xoxs-526538778389-",
+    "006116343155-1ioCT",
+    "h4bnjp8Gt6AlCjN6V7d"
+   ]
+  },
+  {
+   "kind": "slack_webhook",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "https://hooks.slack.com/s",
+    "ervices/T8ZR2V18M/BY4C3RTD",
+    "3/8K2JPFMp8EHkzMt9MQBFiqp0"
+   ]
+  },
+  {
+   "kind": "slack_webhook",
+   "template": "{s}",
+   "secret": [
+    "https://hooks.slack.com/s",
+    "ervices/T3A807AKA/B611DZE6",
+    "E/UzvpVvhn7HSXmFoE4Oao3dZ5"
+   ]
+  },
+  {
+   "kind": "slack_webhook",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "https://hooks.slack.com/s",
+    "ervices/T0N1S3116/B26JR513",
+    "0/ll5G1CiieUztnc4uQ6j67PHY"
+   ]
+  },
+  {
+   "kind": "discord_webhook",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "https://discord.com/api/webhooks/7497639",
+    "84580028708/wM73wzd6snBObQow_AUOq9OVJdvz",
+    "LDaYjU1PjJMpIhaegM19eGhlaxV4iqsf4dZ1Rb78"
+   ]
+  },
+  {
+   "kind": "discord_webhook",
+   "template": "Login failed for {s}",
+   "secret": [
+    "https://discord.com/api/webhooks/2537102",
+    "27659931838/Rv905nBtynD8x5TMsK0wOvlGxY6b",
+    "gj2uIXMg4TeE8VHIpvY5mDIGfiVz-mja1_fZ0nGs"
+   ]
+  },
+  {
+   "kind": "stripe_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "sk_live_1b",
+    "f8o9ALNYdEt",
+    "qbLC562f43i"
+   ]
+  },
+  {
+   "kind": "stripe_key",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "sk_test_OQ",
+    "O8tMj4GI645",
+    "iu3HQ5m9Xue"
+   ]
+  },
+  {
+   "kind": "stripe_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "rk_live_xJ",
+    "k2ZIumT5HlS",
+    "7BZd68r7dNF"
+   ]
+  },
+  {
+   "kind": "stripe_key",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "pk_live_w6",
+    "ovCDRPx8Zee",
+    "tWSQABAiMW7"
+   ]
+  },
+  {
+   "kind": "stripe_webhook",
+   "template": "{s}",
+   "secret": [
+    "whsec_7udv9c",
+    "YvdZzLCnlfaDt",
+    "qXKpz28I9egjH"
+   ]
+  },
+  {
+   "kind": "stripe_webhook",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "whsec_e6qiAC",
+    "bto790IzKA3yO",
+    "AvjoTGZzY2pVr"
+   ]
+  },
+  {
+   "kind": "google_api_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "AIzac41aPOjpO",
+    "DDKyB8fYMVaVO",
+    "F02XP1vaQXL05"
+   ]
+  },
+  {
+   "kind": "google_api_key",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "AIzaS9AfXK12i",
+    "9Y9D4CEdX1dtt",
+    "rDomMKj3p0TKt"
+   ]
+  },
+  {
+   "kind": "google_api_key",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "AIza1LUcjC6Xv",
+    "FUx0SfAa9p24m",
+    "BEsYhqNUGVlgv"
+   ]
+  },
+  {
+   "kind": "google_api_key",
+   "template": "Login failed for {s}",
+   "secret": [
+    "AIza88FFx08lE",
+    "Uf-jb_0MaXfb7",
+    "7Kms-gyKhjuw5"
+   ]
+  },
+  {
+   "kind": "google_oauth",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "ya29.Ygw6ZaTTmZ74Glo4",
+    "dR5rf72ES7zOYO3kSdGHzn",
+    "SlUsjZJFuqVoI4sgz53cPK"
+   ]
+  },
+  {
+   "kind": "google_oauth",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "ya29.mN95T43o4Nk3E_xJ",
+    "8_FnGPuezvOdPTL9k-emZZ",
+    "mF7eQCuMT6_z5INF_i-O4s"
+   ]
+  },
+  {
+   "kind": "ai_api_key",
+   "template": "Login failed for {s}",
+   "secret": [
+    "sk-zpwj3cY7c36iTu",
+    "Yx6Et9TMMy8ufmt62",
+    "Bip-c5d9UkG6ghdAh"
+   ]
+  },
+  {
+   "kind": "ai_api_key",
+   "template": "Login failed for {s}",
+   "secret": [
+    "sk-proj-am5dg1UD6K",
+    "IB74d6cOn_awHMi555M",
+    "a2liSQTol-xH1WIarlt"
+   ]
+  },
+  {
+   "kind": "ai_api_key",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "sk-ant-api03-oUjWv5B",
+    "MzvOV96xAHx39ZG057x1",
+    "ale1djq510X37ndVbC-U-"
+   ]
+  },
+  {
+   "kind": "ai_api_key",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "sk-svcacct--reXQlqY",
+    "Acl6istDrovpFQWJIh44",
+    "PD41KO2MaBpAZ9_ddu8o"
+   ]
+  },
+  {
+   "kind": "npm_token",
+   "template": "{s}",
+   "secret": [
+    "npm_W3HTd3ElJ",
+    "pME2gV5l8OOKi",
+    "AQokWw7bZLix5j"
+   ]
+  },
+  {
+   "kind": "npm_token",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "npm_rHne89lL7",
+    "uMAFm9x2824Kc",
+    "2wbcfY8soHUMfO"
+   ]
+  },
+  {
+   "kind": "npm_token",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "npm_H6Y3Hb5ir",
+    "A5a5rYW61IAmR",
+    "iyj85RERzh19kH"
+   ]
+  },
+  {
+   "kind": "pypi_token",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "pypi-AgEIcHlwaS5vcmctqVS25",
+    "UD5k_9cc6HHkNKdKQtC1221GxYu",
+    "9mDYvEZaMiDcmKFNlVOGMc22Pto"
+   ]
+  },
+  {
+   "kind": "pypi_token",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "pypi-AgEIcHlwaS5vcmc55E_61",
+    "PIewhvCWg1XeXMUJOnvL_HseD6B",
+    "goE3wJAtzZ_67yXVPGURL5vzNeN"
+   ]
+  },
+  {
+   "kind": "sendgrid",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "SG.zoU-8nrM67hMF0Tr9F0-",
+    "Hm.B35WHkzOpaPfHzRkQZDX",
+    "_EDJIeJxYvHg7Goz6sX09Gh"
+   ]
+  },
+  {
+   "kind": "sendgrid",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "SG.Sd3rZnW6-c2j_tbrxlTV",
+    "7d.Ma15k3a2S7GE3GpJaPpf",
+    "gZQvurDkNmGR1lxe0RSbe7x"
+   ]
+  },
+  {
+   "kind": "twilio",
+   "template": "Login failed for {s}",
+   "secret": [
+    "AC8a6be37fc",
+    "6892cca658f",
+    "c95640c21086"
+   ]
+  },
+  {
+   "kind": "twilio",
+   "template": "{s}",
+   "secret": [
+    "SK7b421ecf9",
+    "937ce931d75",
+    "11d51bd8b0fb"
+   ]
+  },
+  {
+   "kind": "digitalocean",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "dop_v1_97e32df8425b4c0a",
+    "e310931d1b8ac95418ca5425",
+    "8153354f2b96860e13f2890d"
+   ]
+  },
+  {
+   "kind": "shopify",
+   "template": "curl -H \"X-Data: {s}\" https://api.example.com/v1 — Terminal",
+   "secret": [
+    "shpat_e6d970",
+    "28d279d1a2e40",
+    "39635cfa894bb"
+   ]
+  },
+  {
+   "kind": "shopify",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "shpss_317a98",
+    "74459ddfcaebf",
+    "44749b287b03c"
+   ]
+  },
+  {
+   "kind": "huggingface",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "hf_izH6p572m",
+    "w09QlNIotb2s",
+    "0vfjCRdt9Jr9C"
+   ]
+  },
+  {
+   "kind": "huggingface",
+   "template": "{s}",
+   "secret": [
+    "hf_766cjkZKE",
+    "KVtWGvk8Ssml",
+    "2Pq8F2uSUZgMC"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "eyJHH7v7_-qF7KiM5FBaDJa8UVu_75OD6.eyJey39Lwp9OJ",
+    "cnaVcE27uS9aZq2lt645y0B-yf98DxNxSJYxZOUP2KkTraM",
+    "cIP.VfI2z38ve1BDxV506aNH4yabwT02qSrSYcRYf-P3YM1"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": "Login failed for {s}",
+   "secret": [
+    "eyJahX3A102UnDNOOtkHi7i3oNdgi7DHe.eyJPvjHWa5ZXy",
+    "kO0hSobKHIf9cFH-cbKgasSlL_5Hk6rBaTmvEzyzOlCZ70v",
+    "Yc8.sq__7h1kpFgLAO2gc0AOuxAgE7SD1Iz6PSaddl8rXwH"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": "{s}",
+   "secret": [
+    "eyJ0pm31a6fxaMaRPrF48vv85nJlXMqnO.eyJismyNJRJIS",
+    "n2_oLRnjeg4h3a9EtTDCyb_CFC8g_lMJp67AQwhHbA7Hwmb",
+    "7L3.dbidA7rSnJftV2XV1Uvp8l1Vv4d-gUFnF1xzxX1t3N3"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "eyJX-S7P7t2NoDn2wrpfkJMm7H7Ohac8K.eyJGixsIqQZsc",
+    "HhNSZAhFSR9pGHz_HE_ELrxayj7z5_y84qcrzkDDcRCUWnh",
+    "_HN.GrG70HqNKBleFfzGC23ACtG9JPTk0ToXFbGyYK8hQa2"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": "{s}",
+   "secret": [
+    "eyJvc9HvKYHpe6RcJDvT4uKTq2s03CGNd.eyJOMQkB84UY1",
+    "w8Drpc1rwJylZLPdUj9sC3tGt_idR0BJ5cD2m51rhGoI1x5",
+    "kWn.RT21QigyBgr8dcFBQAb2-J3Q1ph0zU3Ic76UZeWuRUK"
+   ]
+  },
+  {
+   "kind": "jwt",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "eyJf9aWxmLa2kCfhgE8mSom7bXy-ChRM0.eyJlv4uJq-fgh",
+    "uFbO9RsiikroBPmGp4fmrUTYu9L1NPh1F9flu4LBwSftU7t",
+    "4Jx.3FDw6ON5UcYxxIfV-xTPpWqofAPICyp7H8uvnha3W7F"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Bearer {s}",
+   "secret": [
+    "v4LH9qp_C6bW1",
+    "NVTIJ3kKgfbE4",
+    "VPqE7rTYqSpXJB"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Bearer {s}",
+   "secret": [
+    "wR9g5NV2kRnoS",
+    "l-yqM4k6nDkR9",
+    "zI8nIdViWprd6I"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: bearer {s}",
+   "secret": [
+    "6MkUfaT8uxfnQ",
+    "Sgr28To0wav1u",
+    "bdE0I.Q5y5vylK"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: bearer {s}",
+   "secret": [
+    "6.ZRFfbCaM-mm",
+    "4pBmXuC8fUlby",
+    "kn8HHexOeXa8PY"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Token {s}",
+   "secret": [
+    "NP3.06Jhkk4HY",
+    "u1073X4-18RTK",
+    "mhe84jEXHcT4Bt"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Token {s}",
+   "secret": [
+    "4P02YG6yL1ne_",
+    "U1j-dkEf42Vap",
+    ".pUOdikGBZLsXH"
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Basic {s}",
+   "secret": [
+    "wYQUM6yd8Z5",
+    "4WEInIfzyh8",
+    "EMWNHZh0DK=="
+   ]
+  },
+  {
+   "kind": "auth_header",
+   "template": "Authorization: Basic {s}",
+   "secret": [
+    "yEomV0mMPk2",
+    "p+wPMA2rlL+",
+    "ImcF9ExpS2=="
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "API_KEY={s} — env",
+   "secret": [
+    "DRRzq4j",
+    "490IMPd",
+    "5iT1FH39"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "api_key={s} — env",
+   "secret": [
+    "Z5Cz",
+    "YlH6l",
+    "9Ruys"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "SECRET_KEY='{s}' — env",
+   "secret": [
+    "3rNd4",
+    "98cls",
+    "sZdbTQ"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "DB_PASSWORD='{s}' — env",
+   "secret": [
+    "FKiXvu",
+    "fzkihhB",
+    "940BN73"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "password = {s} — env",
+   "secret": [
+    "TIr",
+    "C6fh",
+    "yn9a"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "client_secret: {s} — env",
+   "secret": [
+    "Xsm3KaWn",
+    "CW2iO6txv",
+    "1XwRze2oT"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "GITHUB_TOKEN: {s} — env",
+   "secret": [
+    "p7F",
+    "0VE",
+    "dw2t"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "access_token = {s} — env",
+   "secret": [
+    "3veUET84",
+    "dlsbltrJ",
+    "60wrq67T"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "refresh_token='{s}' — env",
+   "secret": [
+    "veC",
+    "PW89",
+    "58g7"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "aws_secret_access_key=\"{s}\" — env",
+   "secret": [
+    "9OAf1",
+    "sIci8",
+    "7i17Kn"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "PRIVATE_KEY_PASSPHRASE = {s} — env",
+   "secret": [
+    "hRY",
+    "Uwo",
+    "8lH0"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "x-api-key='{s}' — env",
+   "secret": [
+    "z37N3",
+    "4VmSl",
+    "08yA1v"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "auth=\"{s}\" — env",
+   "secret": [
+    "pKce",
+    "w3f4",
+    "2q5w"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "session_cookie='{s}' — env",
+   "secret": [
+    "evWSYj",
+    "7T35sk5",
+    "NYvZIJV"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "MYSQL_PWD: {s} — env",
+   "secret": [
+    "p1x10PM",
+    "WC4cTyi",
+    "662sKx3"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "webhook_signature='{s}' — env",
+   "secret": [
+    "z9RLw5ekh",
+    "sK6uDMwQN",
+    "5slFR7Dnq"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "STRIPE_SECRET=\"{s}\" — env",
+   "secret": [
+    "DkuW3w",
+    "v6JcI0",
+    "7Ucfbtk"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "npm_config_auth: {s} — env",
+   "secret": [
+    "76B",
+    "jy4R",
+    "Vc7j"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "Credentials: {s} — env",
+   "secret": [
+    "IZEI",
+    "I18Hw",
+    "7tGqA"
+   ]
+  },
+  {
+   "kind": "key_value",
+   "template": "passwd={s} — env",
+   "secret": [
+    "ck1y1zu",
+    "OxdK3Ur",
+    "S574Di8I"
+   ]
+  },
+  {
+   "kind": "key_value_short",
+   "template": "password={s}",
+   "secret": [
+    "hu",
+    "nte",
+    "r2!"
+   ]
+  },
+  {
+   "kind": "key_value_short",
+   "template": "DB_PASSWORD={s}",
+   "secret": [
+    "Win",
+    "ter",
+    "2026"
+   ]
+  },
+  {
+   "kind": "key_value_short",
+   "template": "pwd={s}",
+   "secret": [
+    "let",
+    "mei",
+    "n99"
+   ]
+  },
+  {
+   "kind": "key_value_short",
+   "template": "PASSWORD={s}",
+   "secret": [
+    "corr",
+    "ect-",
+    "horse"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "postgres://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "NN0BO",
+    "x9zh7",
+    "56CTlo"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "postgresql://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "zF80z",
+    "QDyc8",
+    "OHkrcf"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "mysql://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "790ji",
+    "Yw6Zw",
+    "q0jMFJ"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "mongodb+srv://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "FaF2T",
+    "O7i80",
+    "tEcL10"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "redis://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "S5MdS",
+    "9yPgT",
+    "Hyc8AN"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "amqp://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "9M80z",
+    "brhsI",
+    "4pbB9O"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "https://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "gnb28",
+    "nvgg3",
+    "97Wd6e"
+   ]
+  },
+  {
+   "kind": "url_credentials",
+   "template": "ftp://admin:{s}@db.internal.example:5432/app",
+   "secret": [
+    "MNjc2",
+    "4nK8n",
+    "rxyGXs"
+   ]
+  },
+  {
+   "kind": "url_token_userinfo",
+   "template": "git clone https://{s}@github.com/acme/api.git",
+   "secret": [
+    "ghp_blN5ag4M3",
+    "7bA6E6zmITqIX",
+    "nyIvPhpAwyQg7j"
+   ]
+  },
+  {
+   "kind": "url_token_userinfo",
+   "template": "git clone https://{s}@github.com/acme/api.git",
+   "secret": [
+    "ghp_R2Nu3Op8t",
+    "nasWb0DZv3dGm",
+    "ZBf8fFk0xSNk1d"
+   ]
+  },
+  {
+   "kind": "url_token_userinfo",
+   "template": "git clone https://{s}@github.com/acme/api.git",
+   "secret": [
+    "ghp_Owfxi43Jo",
+    "N3vT0w5jJU4xM",
+    "6rIiHh9wVOWzlH"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?token={s}&x=1 — Chrome",
+   "secret": [
+    "qTLL63Oofq",
+    "mn5qS2Zc9Tj",
+    "mdnzabG6G0a"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?access_token={s}&x=1 — Chrome",
+   "secret": [
+    "dH9YvZOlu6",
+    "kF35wef6V8G",
+    "QqIzCqqsv2W"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?sig={s}&x=1 — Chrome",
+   "secret": [
+    "Rjq6222VGB",
+    "fjFeugtDIp1",
+    "xcFt028ZYln"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?code={s}&x=1 — Chrome",
+   "secret": [
+    "S7w5UuUYag",
+    "rpn6Q75zL1f",
+    "a3e1SIiOFeS"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?key={s}&x=1 — Chrome",
+   "secret": [
+    "tVVcSKz8QY",
+    "Ecc91hptn8c",
+    "5g1D7NTDWhh"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?state={s}&x=1 — Chrome",
+   "secret": [
+    "O74HK8ivlA",
+    "tlo7taqp9el",
+    "47s0XUn22Z8"
+   ]
+  },
+  {
+   "kind": "url_query",
+   "template": "https://app.example.com/callback?reset={s}&x=1 — Chrome",
+   "secret": [
+    "gVXAMjSknV",
+    "CUp9CHMx9UD",
+    "ZC6Q7bd31KB"
+   ]
+  },
+  {
+   "kind": "url_fragment",
+   "template": "https://app.example.com/#access_token={s}",
+   "secret": [
+    "xX5FmJjsMkM8o",
+    "bpjF5gNJiaGYj",
+    "uy4tM_1X56ELMV"
+   ]
+  },
+  {
+   "kind": "url_path_token",
+   "template": "https://app.example.com/reset-password/{s} — Firefox",
+   "secret": [
+    "c4b2b8b4ff110",
+    "5105ddfa4df74",
+    "aefe3cb857a56b"
+   ]
+  },
+  {
+   "kind": "url_path_token",
+   "template": "https://app.example.com/reset-password/{s} — Firefox",
+   "secret": [
+    "48337c8340ff2",
+    "d274512c71fbf",
+    "250e639cf29600"
+   ]
+  },
+  {
+   "kind": "url_path_token",
+   "template": "https://app.example.com/reset-password/{s} — Firefox",
+   "secret": [
+    "08022237f87f4",
+    "46b72ec447e38",
+    "5691eec4255769"
+   ]
+  },
+  {
+   "kind": "private_key",
+   "template": "-----BEGIN RSA PRIVATE KEY-----\n{s}\n-----END RSA PRIVATE KEY-----",
+   "secret": [
+    "yBi2Op7KsvZPljoZdHuxr",
+    "86e26of4uA/84VNbyLznI",
+    "0oR5RKs80+Qup5WGm1A1wu"
+   ]
+  },
+  {
+   "kind": "private_key",
+   "template": "-----BEGIN PRIVATE KEY-----\n{s}\n-----END PRIVATE KEY-----",
+   "secret": [
+    "jIQYK5uhs6ZyHbN9PLVX6",
+    "lMY76iqOar41fIoA4cv6I",
+    "gFqUH6xG8pi9Y6wkexZMNI"
+   ]
+  },
+  {
+   "kind": "private_key",
+   "template": "-----BEGIN OPENSSH PRIVATE KEY-----\n{s}\n-----END OPENSSH PRIVATE KEY-----",
+   "secret": [
+    "YCKrK0GIEydvdYazjpEcj",
+    "xY8HDaMMxy+Ciw9QjBK70",
+    "pAg8hUwJWTeWeClBi2/d0l"
+   ]
+  },
+  {
+   "kind": "private_key",
+   "template": "-----BEGIN EC PRIVATE KEY-----\n{s}\n-----END EC PRIVATE KEY-----",
+   "secret": [
+    "EXe86HVay5vGMaIzX1ehk",
+    "j2smPaD26PQ9vln/QRabG",
+    "y2zS6k3ph9A6YBFSczEzv1"
+   ]
+  },
+  {
+   "kind": "azure_storage",
+   "template": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey={s};EndpointSuffix=core.windows.net",
+   "secret": [
+    "wOB4YvM1jZzF9PMofowLtZ5rlPsmX",
+    "zvXboTEm8qIe3ju/3uiVduA6n+6rc",
+    "4UU/d+gYBy4iXtaPN0qr4QWp5/8o=="
+   ]
+  },
+  {
+   "kind": "azure_sas",
+   "template": "https://acme.blob.core.windows.net/c/f.txt?sv=2022-11-02&sig={s}",
+   "secret": [
+    "889bdX8LbuRZfd",
+    "XZylOlQPd%l9JDK",
+    "XryaX3k3cbYVC6z"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "{s}",
+   "secret": [
+    "73bbbd89c59a5",
+    "097ebc3f533c5",
+    "0839d56df87103"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "d9f1494780f3c",
+    "1e9f2ba474c04",
+    "538c4ecf3fcf8c"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "Copied {s} to clipboard",
+   "secret": [
+    "569ac456cebe4",
+    "7c16b20573f00",
+    "f26fb2e9917974"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "4fddb76116091",
+    "4379d825583ad",
+    "381bccce156d93"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "export TOKEN_VALUE={s} — bash",
+   "secret": [
+    "6c500b207bbfb",
+    "8d16904512a2d",
+    "97a79c74f9503a"
+   ]
+  },
+  {
+   "kind": "generic_hex",
+   "template": "{s}",
+   "secret": [
+    "31e9fd29a081e",
+    "cb6a48da79035",
+    "06c66c8f2a173c"
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": "config.json: \"value\": \"{s}\" - Notepad",
+   "secret": [
+    "02OhNlHE55lEZQD",
+    "M06Tj8vRW2P2G0O",
+    "47n1m9oTmOWeF7="
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": "Login failed for {s}",
+   "secret": [
+    "rX4AjG45BsH8dxC",
+    "Lf7zvrQGIV9a163",
+    "pkANUQiPCTGMnk="
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "n+OsD/f/8EW0160",
+    "Pn2PKb2c75jRq3s",
+    "spp5NM4t9jp06g="
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": "Login failed for {s}",
+   "secret": [
+    "6wAVrQkIo8sekBk",
+    "Kmv9EuKYz7inEYa",
+    "f862OX9Q2/520T="
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": "[{s}] deploy log — Chrome",
+   "secret": [
+    "c1uwnciyXbRYfyv",
+    "geG7htfc+10R9N3",
+    "mX25KZ9v8jEhAh="
+   ]
+  },
+  {
+   "kind": "generic_base64",
+   "template": ".env — api — {s} — Visual Studio Code",
+   "secret": [
+    "C32pNZYMb38ob9s",
+    "6PCA8NHZAsNzsc5",
+    "TET1cwRhcmdNKJ="
+   ]
+  },
+  {
+   "kind": "email",
+   "template": "Inbox — {s} — Mail",
+   "secret": [
+    "nyofbcn.",
+    "fyiyl@ex",
+    "ample.com"
+   ],
+   "titles_only": true
+  },
+  {
+   "kind": "email",
+   "template": "Inbox — {s} — Mail",
+   "secret": [
+    "jmjmslq.",
+    "hqznp@ex",
+    "ample.com"
+   ],
+   "titles_only": true
+  },
+  {
+   "kind": "email",
+   "template": "Inbox — {s} — Mail",
+   "secret": [
+    "spcesav.",
+    "omxlq@ex",
+    "ample.com"
+   ],
+   "titles_only": true
+  },
+  {
+   "kind": "email",
+   "template": "Inbox — {s} — Mail",
+   "secret": [
+    "nnqklen.",
+    "vehzz@ex",
+    "ample.com"
+   ],
+   "titles_only": true
+  },
+  {
+   "kind": "email",
+   "template": "Inbox — {s} — Mail",
+   "secret": [
+    "otspgfz.",
+    "lwmut@ex",
+    "ample.com"
+   ],
+   "titles_only": true
+  }
+ ],
+ "benign_titles": [
+  "main.rs - api - Visual Studio Code",
+  "Pull request #42 · acme/api — Google Chrome",
+  "Keyboard Shortcuts — Settings",
+  "README.md — secretary — Visual Studio Code",
+  "auth.rs - api - Visual Studio Code",
+  "Token budget planning — Notion",
+  "git log --oneline a1b2c3d",
+  "cargo test -p secretary-shared — PowerShell",
+  "Issue 1234: Session handling refactor",
+  "Rust 1.89 release notes",
+  "src/components/UserProfileSettings.tsx — web",
+  "localhost:3000 — Firefox"
+ ]
+}

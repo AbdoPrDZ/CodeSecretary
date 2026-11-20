@@ -17,9 +17,9 @@
   - Acceptance: serde round-trip tests for every type
 - [x] SH-4 — Validation · 2026-11-20 · `validate.rs`: `parse` (untrusted JSON → precise reason) + `validate` (typed); reason codes = warehouse `rejected[].reason`; 13 tests cover missing fields, end < start, future > 5 min, metadata > 8 KB (UTF-8 bytes), unknown type, plus interval/point shape, repo-relative editor paths, commit hashes, backfill `estimated`; warehouse `ingest.py` mirrors the new rules (test added)
   - Acceptance: rejects missing fields, end < start, future > 5 min skew, metadata > 8 KB, unknown type
-- [ ] SH-5 — Redaction engine + default rules
+- [x] SH-5 — Redaction engine + default rules · 2026-11-20 · `redact/`: `redact(&mut Event)` per field (titles: URLs stripped, secrets + e-mails masked, ≤ 200 chars; remotes normalized; other text secret-masked; hashes/enums untouched); ~35 patterns (PEM keys, URL credentials, JWT, AWS, GitHub, GitLab, Slack, Discord, Stripe, Google, OpenAI/Anthropic, npm, PyPI, SendGrid, Twilio, DO, Shopify, HF, Azure, auth headers, `KEY=value`, high-entropy); corpus `shared/fixtures/redaction-corpus-v1.json`: 145 secrets, zero survive, 12 benign titles unchanged
   - Acceptance: redaction corpus (≥ 100 secret samples) — zero survive
-- [ ] SH-6 — URL stripping and remote URL normalization
+- [x] SH-6 — URL stripping and remote URL normalization · 2026-11-20 · `redact/url.rs`: `strip_url` (no userinfo/query/fragment, token-like segments → `:id`), `normalize_remote` (scp, ssh, https, git, Azure `v3/` → `host/path`; local paths → none); 36 table-driven cases
   - Acceptance: table-driven tests incl. edge cases
 - [ ] SH-7 — Device API types (auth config, register, batch, heartbeat, config) · 🚧 in progress · 2026-11-07
   - Acceptance: used by agent and warehouse without duplication
@@ -46,3 +46,6 @@
   - Commit hashes are 7–64 hex characters, and `git.backfill_commit.estimated` must be true.
   - New reason codes: `missing_field`, `invalid_field`.
   - The warehouse now measures metadata size in UTF-8 bytes. Before, Python's ASCII escaping made non-ASCII metadata count up to 3× larger than in the agent.
+- 2026-11-20 (SH-5): The corpus stores each fake secret split into parts, joined by the test, so the repo never holds a contiguous token (no secret-scanner or push-protection hits). Regenerate it with `shared/fixtures/gen_redaction_corpus.py`.
+  - **Deviation:** `redaction_version` is not written into each event's metadata (plan §4.2). It is in `AgentConfig`, and adding a metadata field would change the contract for every type. Revisit with SH-22.
+  - **Over-redaction is accepted:** long hex or base64 strings in titles (e.g. full Git hashes) are masked, and so is any value after a key ending in key/token/secret/password/auth.
