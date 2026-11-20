@@ -3,16 +3,26 @@
 //! The only component that runs on the developer's machine. It collects,
 //! redacts, buffers and uploads activity evidence; it never calculates time.
 
+mod api;
 mod app;
+mod auth;
+mod buffer;
 mod cli;
 mod config;
+mod heartbeat;
 mod instance;
 mod logging;
+mod login;
 mod paths;
 mod platform;
+mod presence;
 mod probe;
 mod shutdown;
+mod state;
 mod supervisor;
+#[cfg(test)]
+mod upload_tests;
+mod uploader;
 
 use std::process::ExitCode;
 use std::time::Duration;
@@ -35,6 +45,9 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Run(RunArgs::default())) {
         Command::Run(args) => run(args),
+        Command::Login(args) => login::login(args),
+        Command::Logout => login::logout(),
+        Command::Status => login::status(),
         Command::Paths => print_paths(),
         Command::Probe(args) => probe::run(args),
     }

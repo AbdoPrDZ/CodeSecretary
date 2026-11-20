@@ -38,7 +38,7 @@ def test_invalid_values_are_rejected(name, value):
 
 def test_repr_never_prints_connection_strings():
   config = Config.from_lookup({
-    'DATABASE_URL': 'postgresql://u:secret@h/db',
-    'DATABASE_MIGRATION_URL': 'postgresql://o:secret2@h/db',
+    'DATABASE_URL': 'postgresql://u:pw-app-1@h/db',
+    'DATABASE_MIGRATION_URL': 'postgresql://o:pw-owner-2@h/db',
   })
-  assert 'secret' not in repr(config)
+  assert 'pw-app-1' not in repr(config) and 'pw-owner-2' not in repr(config)

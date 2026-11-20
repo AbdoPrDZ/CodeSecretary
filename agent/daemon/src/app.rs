@@ -1,14 +1,21 @@
 //! Agent lifecycle: start components, wait for a stop request, shut down.
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
 use tracing::{info, warn};
 
+use crate::api::{self, Warehouse};
+use crate::auth::Link;
+use crate::auth::store::KeyringStore;
+use crate::buffer::Buffer;
 use crate::config::LocalConfig;
+use crate::heartbeat::{ClockOffset, HEARTBEAT_EVERY, HeartbeatTask};
 use crate::paths::AgentPaths;
-use crate::shutdown;
 use crate::supervisor::{ShutdownOutcome, Supervisor};
+use crate::uploader::{UPLOAD_EVERY, Uploader};
+use crate::{presence, shutdown};
 
 /// How long components get to flush after a stop request. Kept under the
 /// ~5 s Windows allows for console-close/logoff handlers where possible;
@@ -25,8 +32,40 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
     // Directories and server URL are the user's own config, not activity metadata.
     info!(data_dir = %paths.data_dir.display(), server_url = %config.server_url, "configuration loaded");
 
-    #[allow(unused_mut)] // components are registered here by later tasks (AG-2…AG-14)
+    let buffer = Arc::new(Buffer::open(&paths.buffer_file())?);
+    info!(queued = buffer.len()?, "event buffer opened");
+    let http = api::http_client()?;
+    let link = Arc::new(Link::new(
+        paths.state_file(),
+        Arc::new(KeyringStore),
+        http.clone(),
+    ));
+    let warehouse = Arc::new(Warehouse::new(http, link));
+    let clock = Arc::new(ClockOffset::default());
+
     let mut supervisor = Supervisor::new();
+    supervisor.spawn("presence", {
+        let buffer = buffer.clone();
+        move |token| presence::run(buffer, token)
+    });
+    supervisor.spawn("uploader", {
+        let uploader = Uploader {
+            buffer: buffer.clone(),
+            warehouse: warehouse.clone(),
+            clock: clock.clone(),
+            every: UPLOAD_EVERY,
+        };
+        move |token| uploader.run(token)
+    });
+    supervisor.spawn("heartbeat", {
+        let task = HeartbeatTask {
+            warehouse,
+            buffer,
+            clock,
+            every: HEARTBEAT_EVERY,
+        };
+        move |token| task.run(token)
+    });
 
     let reason = tokio::select! {
         signal = shutdown::wait_for_signal() => signal?,

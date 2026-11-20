@@ -41,6 +41,9 @@ services:
       WAREHOUSE_BIND: 0.0.0.0:8080
       LOG_FORMAT: json
       LOG_LEVEL: info
+      # Tokens carry the public issuer; keys are fetched over the Compose network.
+      KEYCLOAK_ISSUER: http://localhost:8180/realms/secretary
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/secretary/protocol/openid-connect/certs
     ports:
       - "8080:8080"
     depends_on:

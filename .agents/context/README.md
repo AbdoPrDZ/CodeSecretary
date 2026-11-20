@@ -4,7 +4,7 @@ AI-readable memory for this project. Read this before substantial work; keep it 
 
 **CodeSecretary** — a local agent collects developer activity evidence; a cloud platform turns it into explainable, correctable time per project for individuals and (later) teams.
 
-**Project stage:** early implementation. The agent daemon skeleton (AG-1), the `secretary-orm` package and the Python warehouse foundations (WH-1R: FastAPI server, ORM-owned schema with RLS, Docker Compose) exist. Shared, engine and overview are not started. Files marked `Status: planned` describe intended design, not code.
+**Project stage:** early implementation (M1). The `shared/` contract crate, the agent daemon (Keycloak login, presence, buffer, uploader, heartbeat), the `secretary-orm` package and the Python warehouse (ORM-owned schema with RLS, device API: auth, registration, ingest, heartbeat) exist; the agent → warehouse path works end to end in Docker Compose. Engine and overview are not started. Files marked `Status: planned` describe intended design, not code.
 
 ## Reading Order
 

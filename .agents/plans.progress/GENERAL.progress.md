@@ -15,8 +15,8 @@
 | Phase / Milestone | Status | Updated |
 |---|---|---|
 | Phase 0 — Validation | In progress | presence/focus probe (AG-0.1) verified on Windows |
-| M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done; shared/engine/overview M0 pending |
-| M1 — Event pipeline end-to-end | Not started | — |
+| M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done, `shared` crate in (SH-1 awaiting CI); engine/overview M0 pending |
+| M1 — Event pipeline end-to-end | In progress | demo works on Windows: agent signs in via Keycloak, uploads heartbeats + presence events (AG-2/3/5, WH-4/5/8 done; AG-4 1 h offline run, AG-6/7, WH-6/7/9/10/11, SH-4–9, OV M1 left) |
 | M2 — Phase 1 collectors | Not started | — |
 | M3 — Engine v1 | Not started | — |
 | M4 — Dashboard v1 | Not started | — |
@@ -41,9 +41,9 @@
 ## Phase 1 — Milestones
 
 ### M0 — Foundations
-- [ ] Root Cargo workspace (`shared`, `agent/daemon`, `engine`) — agent in; shared/engine pending. Python packages: `orm`, `warehouse` (overview/api later, D15)
+- [ ] Root Cargo workspace (`shared`, `agent/daemon`, `engine`) — shared + agent in; engine pending. Python packages: `orm`, `warehouse` (overview/api later, D15)
 - [ ] pnpm workspace (`agent/vscode`, `overview/web`)
-- [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres + warehouse in
+- [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres, Keycloak, warehouse in
 - [ ] CI: fmt, clippy, tests, TS lint/test, web build
 - [ ] SHARED M0 tasks done
 - [ ] AGENT M0 tasks done
@@ -56,7 +56,7 @@
 - [ ] AGENT M1 tasks done
 - [ ] WAREHOUSE M1 tasks done
 - [ ] OVERVIEW M1 tasks done (device approval)
-- [ ] Demo: agent signs in via device flow and uploads heartbeats + presence events into Postgres
+- [x] Demo: agent signs in via device flow and uploads heartbeats + presence events into Postgres · 2026-11-14 · Windows + Docker Compose: `login` → Keycloak approval → device registered → presence intervals and heartbeats stored; restart keeps the sign-in; revocation signs the agent out
 
 ### M2 — Phase 1 collectors
 - [ ] AGENT M2 tasks done
@@ -139,3 +139,4 @@
 | 2026-11-07 | Decision D14: Keycloak for user and device auth; WH-4, AG-2, OV-2, OV-4, OV-44, SH-7 rescoped |
 | 2026-11-07 | `orm/`: single-database Python ORM (`secretary-orm`) extracted from J-ERP; 61 unit + 4 Postgres integration tests pass; not wired into any service (no task ID) |
 | 2026-11-07 | Decision D15: warehouse (and later overview API) in Python on `secretary-orm`, ORM owns the schema; WH-1R done (Compose healthy, RLS tests pass) |
+| 2026-11-14 | M1 started: `shared` crate (SH-2, SH-3), warehouse device API (WH-4, WH-5, WH-8), agent Keycloak login + SQLite buffer + uploader + heartbeat + presence collector (AG-2, AG-3, AG-5 done; AG-4, AG-8 in progress). M1 demo passes on Windows |

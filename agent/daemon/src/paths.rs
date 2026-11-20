@@ -56,6 +56,16 @@ impl AgentPaths {
         self.data_dir.join("agent.lock")
     }
 
+    /// Sign-in state (no secrets): installation id, Keycloak endpoints, device id.
+    pub fn state_file(&self) -> PathBuf {
+        self.data_dir.join("state.json")
+    }
+
+    /// Local event buffer (SQLite), holding redacted events until acknowledged.
+    pub fn buffer_file(&self) -> PathBuf {
+        self.data_dir.join("buffer.sqlite3")
+    }
+
     /// Creates all directories, readable by the current user only.
     pub fn ensure(&self) -> Result<()> {
         for dir in [&self.config_dir, &self.data_dir, &self.log_dir] {

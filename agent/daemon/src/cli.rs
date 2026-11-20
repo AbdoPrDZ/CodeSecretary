@@ -15,6 +15,12 @@ pub struct Cli {
 pub enum Command {
     /// Run the agent in the foreground (default).
     Run(RunArgs),
+    /// Sign this device in with your CodeSecretary account (opens a browser).
+    Login(LoginArgs),
+    /// Sign out: ends the session and removes the token from the OS keychain.
+    Logout,
+    /// Show sign-in state, device and how many events wait for upload.
+    Status,
     /// Print the directories the agent uses for config, data and logs.
     Paths,
     /// Print idle/active state and the focused app/title live (Phase 0 prototype).
@@ -27,6 +33,16 @@ pub struct RunArgs {
     /// Stop gracefully after this many seconds (used by tests and diagnostics).
     #[arg(long, hide = true, value_name = "SECONDS")]
     pub run_for: Option<u64>,
+}
+
+#[derive(Debug, Default, Args)]
+pub struct LoginArgs {
+    /// Warehouse URL to sign in to (default: `server_url` from agent.toml).
+    #[arg(long, value_name = "URL")]
+    pub server: Option<String>,
+    /// Do not try to open a browser; just print the link and code.
+    #[arg(long)]
+    pub no_browser: bool,
 }
 
 #[derive(Debug, Args)]

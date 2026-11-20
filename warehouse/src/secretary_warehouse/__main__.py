@@ -73,6 +73,7 @@ def _serve(config: Config) -> None:
   import uvicorn
   from secretary_orm import Config as OrmConfig, Environment
 
+  from secretary_warehouse.auth import AuthSettings
   from secretary_warehouse.http import create_app
   from secretary_warehouse.schema import models  # noqa: F401  (registers every model)
 
@@ -88,7 +89,7 @@ def _serve(config: Config) -> None:
 
   logger.info('listening', extra={'host': config.host, 'port': config.port})
   uvicorn.run(
-    create_app(env),
+    create_app(env, AuthSettings.from_config(config)),
     host=config.host,
     port=config.port,
     log_config=None,  # keep telemetry's handlers (text or JSON)

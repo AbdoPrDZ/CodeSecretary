@@ -8,6 +8,10 @@
 | ``DATABASE_MAX_CONNECTIONS`` | ``10`` | Pool size |
 | ``LOG_FORMAT`` | ``text`` | ``text`` or ``json`` |
 | ``LOG_LEVEL`` | ``info`` | ``debug``, ``info``, ``warning``, ``error`` |
+| ``KEYCLOAK_ISSUER`` | ``http://localhost:8180/realms/secretary`` | Realm issuer; must equal the tokens' ``iss`` and is what agents are told to sign in at |
+| ``KEYCLOAK_JWKS_URL`` | ``<issuer>/protocol/openid-connect/certs`` | Where signing keys are fetched (inside Compose: the ``keycloak`` host) |
+| ``KEYCLOAK_AGENT_CLIENT_ID`` | ``secretary-agent`` | Required ``azp`` of device tokens |
+| ``KEYCLOAK_AUDIENCE`` | ``secretary-warehouse`` | Required entry in ``aud`` |
 """
 
 from __future__ import annotations
@@ -33,6 +37,10 @@ class Config:
   database_max_connections: int
   log_format: str
   log_level: str
+  keycloak_issuer: str = 'http://localhost:8180/realms/secretary'
+  keycloak_jwks_url: str = 'http://localhost:8180/realms/secretary/protocol/openid-connect/certs'
+  keycloak_agent_client_id: str = 'secretary-agent'
+  keycloak_audience: str = 'secretary-warehouse'
 
   def __repr__(self) -> str:
     # Never print connection strings: they contain passwords.
@@ -41,7 +49,8 @@ class Config:
       f'Config(bind={self.host}:{self.port}, database_url=<redacted>, '
       f'migration_database_url={migration}, '
       f'database_max_connections={self.database_max_connections}, '
-      f'log_format={self.log_format!r}, log_level={self.log_level!r})'
+      f'log_format={self.log_format!r}, log_level={self.log_level!r}, '
+      f'keycloak_issuer={self.keycloak_issuer!r})'
     )
 
   @classmethod
@@ -78,6 +87,11 @@ class Config:
     if log_level not in LOG_LEVELS:
       raise ConfigError(f'LOG_LEVEL is invalid: expected one of {", ".join(LOG_LEVELS)}')
 
+    issuer = (get('KEYCLOAK_ISSUER') or 'http://localhost:8180/realms/secretary').rstrip('/')
+    if not issuer.startswith(('https://', 'http://')):
+      raise ConfigError('KEYCLOAK_ISSUER is invalid: must be an http(s) URL')
+    jwks_url = get('KEYCLOAK_JWKS_URL') or f'{issuer}/protocol/openid-connect/certs'
+
     return cls(
       host=host,
       port=port,
@@ -86,6 +100,10 @@ class Config:
       database_max_connections=max_connections,
       log_format=log_format,
       log_level=log_level,
+      keycloak_issuer=issuer,
+      keycloak_jwks_url=jwks_url,
+      keycloak_agent_client_id=get('KEYCLOAK_AGENT_CLIENT_ID') or 'secretary-agent',
+      keycloak_audience=get('KEYCLOAK_AUDIENCE') or 'secretary-warehouse',
     )
 
 

@@ -13,17 +13,17 @@
 ## Phase 1
 
 ### M0
-- [ ] AG-1 — Daemon skeleton: single instance, logging, config dir, graceful shutdown · 🚧 in progress · 2026-11-06 · implemented; 15 tests + fmt + clippy pass on Windows; macOS/Linux await first CI run
+- [ ] AG-1 — Daemon skeleton: single instance, logging, config dir, graceful shutdown · 🚧 in progress · 2026-11-06 · implemented; 16 unit + 4 lifecycle tests + fmt + clippy pass on Windows; macOS/Linux await first CI run (branch not pushed yet)
   - Acceptance: starts/stops cleanly on 3 OSes
 
 ### M1
-- [ ] AG-2 — Keycloak device login, refresh token in OS keychain, token refresh, device registration
+- [x] AG-2 — Keycloak device login, refresh token in OS keychain, token refresh, device registration · 2026-11-14 · `login`/`logout`/`status`; device grant against Compose Keycloak, refresh token in Windows Credential Manager (`keyring`), access token in memory, refresh with rotation persisted, `POST /v1/devices`; E2E on Windows: signed in across 2 restarts, revoked device → agent signs out and `status` asks to log in, re-login → new device; macOS Keychain / Linux Secret Service compile-only so far
   - Acceptance: approve in browser; stays signed in across restarts; revocation → re-login prompt
-- [ ] AG-3 — SQLite buffer
+- [x] AG-3 — SQLite buffer · 2026-11-14 · `buffer.rs` (rusqlite bundled, WAL): FIFO, dedupe on event_id, ack-delete, 30 days / 500k rows bound with an `agent.buffer_overflow` marker; tests: reopen without close (crash), overflow, age, corrupt row
   - Acceptance: survives crash; bounded; FIFO; overflow tests
-- [ ] AG-4 — Uploader (batch, gzip, retry, ack, clock offset)
+- [ ] AG-4 — Uploader (batch, gzip, retry, ack, clock offset) · 🚧 in progress · 2026-11-14 · implemented: 60 s / 500-event trigger, gzip batches ≤ 500 (halved if > 1 MB), ack accepted + duplicates + rejected, 401 → refresh once → retry, 403 → re-register, backoff 1 s → 5 min with jitter; 8 mock-server tests; E2E: warehouse down 30 s → all events delivered once (8 rows, 8 distinct ids); left: the 1 h offline run from the acceptance
   - Acceptance: offline 1 h → all events delivered exactly once on reconnect
-- [ ] AG-5 — Heartbeat
+- [x] AG-5 — Heartbeat · 2026-11-14 · every 60 s (first after 1 s): version, queue depth, clock offset; offset = round-trip midpoint − `server_time`; E2E: devices.last_seen_at and queue_depth updated
   - Acceptance: every 60 s with version, queue depth, clock offset
 - [ ] AG-6 — Pipeline: validate → exclusions → redact → buffer
   - Acceptance: redaction corpus passes on the agent path
@@ -31,7 +31,7 @@
   - Acceptance: dashboard change applies within 5 min
 
 ### M2
-- [ ] AG-8 — Presence collector (Windows, macOS, Linux X11; Wayland best-effort)
+- [ ] AG-8 — Presence collector (Windows, macOS, Linux X11; Wayland best-effort) · 🚧 in progress · 2026-11-14 · `presence.rs`: 5 s poll, idle after 60 s back-dated to last input (never before collector start), 5 min checkpoints, sleep-gap handling, flush on shutdown; 6 state-machine tests; E2E on Windows: intervals stored in Postgres; left: manual ±10 s script on each OS
   - Acceptance: idle intervals match manual test script ±10 s
 - [ ] AG-9 — Focus collector
   - Acceptance: focus intervals correct; titles redacted
@@ -55,7 +55,7 @@
   - Acceptance: < 1% CPU avg, < 80 MB RAM over a workday
 
 ### Security checklist
-- [ ] Refresh token only in OS keychain; access token only in memory
+- [x] Refresh token only in OS keychain; access token only in memory · 2026-11-14 · state.json, logs and stdout checked: no tokens; keychain entry removed on logout and sign-out
 - [ ] Local API bound to 127.0.0.1, token required, `Origin` rejected
 - [ ] Local port/token file readable by current user only
 - [ ] Redaction before buffer write
@@ -76,3 +76,9 @@
 - [ ] AG-31 — Respect workspace-level policies pushed via config
 
 ## Notes
+- 2026-11-14: Daemon layout is flatter than plan §3 for now: `auth/` (oidc, store, `Link`), `api.rs`, `buffer.rs`, `uploader.rs`, `heartbeat.rs`, `presence.rs`, `state.rs`, `login.rs`. Split into `collectors/` when the focus and git collectors land.
+- 2026-11-14: Presence events go straight to the buffer: they carry no metadata, so the AG-6 pipeline (validate → exclusions → redact) is not needed for them yet. Focus (AG-9) must wait for SH-5 redaction.
+- 2026-11-14: Collector idle threshold is 60 s; the engine applies the user's idle threshold (Appendix A, 5 min) on top.
+- 2026-11-14: The keychain entry is per installation (`CodeSecretary` / `refresh-token/<installation_id>` from state.json), so separate agent homes never share a token. The daemon never touches the keychain until `login` has written state.json.
+- 2026-11-14: When the warehouse reports a revoked device, the agent deletes its keychain entry but does not end the Keycloak session; overview's revoke (OV-4) ends it. Events buffered while signed out are uploaded under the next device registration.
+- 2026-11-14: Linux builds need `libdbus-1-dev` (keyring's Secret Service backend); added to CI.

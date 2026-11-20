@@ -2,7 +2,7 @@
 
 **CodeSecretary** automatically tracks developer work time per project. A local agent collects redacted activity evidence (presence, editor, Git, terminal, browser) and uploads it to a cloud platform that deterministically reconstructs work sessions, lets users correct them, and (later) shares submitted time with teams — without surveillance.
 
-**Stage:** early implementation. The Cargo workspace (agent), the `agent/daemon` skeleton (AG-1), the `orm/` package, the Python warehouse foundations (WH-1R: FastAPI server, ORM-owned schema with RLS, Docker Compose) and CI exist. Shared, engine and overview are not started.
+**Stage:** early implementation (M1). Exists: the Cargo workspace (`shared`, agent), the `shared/` contract crate (event envelope, Phase 1 catalog, device API types), the agent daemon (Keycloak device login, presence collector, SQLite buffer, uploader, heartbeat), the `orm/` package, the Python warehouse (ORM-owned schema with RLS, Keycloak token validation, device registration, batch ingest, heartbeat), Keycloak + Postgres in Docker Compose, and CI. Engine and overview are not started.
 
 ## Start Here
 

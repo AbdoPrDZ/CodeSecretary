@@ -26,15 +26,15 @@
   - Acceptance: same behaviour as WH-1–3: boots in Compose, /healthz + /readyz, schema created by ORM + post-sync SQL, RLS tests pass as the app role
 
 ### M1
-- [ ] WH-4 — Keycloak token validation + device registration, Keycloak in Compose · 🚧 in progress · 2026-11-07 · step 1 done: Keycloak 26.4.2 in Compose (own DB), `secretary` realm import (agent device-grant client with audience mapper, dashboard PKCE client, dev user), `deploy/keycloak/smoke_device_flow.py` passes 14/14 and runs in CI; next: token validation, `/v1/auth/config`, `POST /v1/devices`
+- [x] WH-4 — Keycloak token validation + device registration, Keycloak in Compose · 2026-11-14 · Keycloak 26.4.2 in Compose + realm import (smoke test 14/14, in CI); `auth.py`: RS256 via JWKS, iss/aud/azp/typ/exp, sub → user via `app_resolve_identity`, sid → device, 60 s cache; `GET /v1/auth/config`, `POST /v1/devices`; tests: 11 bad-token cases → 401, revoked → 401; E2E: the real agent signed in through Keycloak and registered in Compose
   - Acceptance: agent signs in via Keycloak device flow and registers; bad tokens → 401; revoked device → 401
-- [ ] WH-5 — Batch ingest (validate, dedupe, clock offset, insert)
+- [x] WH-5 — Batch ingest (validate, dedupe, clock offset, insert) · 2026-11-07 · `POST /v1/events:batch` (gzip or JSON, ≤1 MB sent / 16 MB inflated / 1,000 events), per-event rejections, `ON CONFLICT (event_id, timestamp_start) DO NOTHING`; test: resent batch → all duplicates, 5 rows; archive (WH-6) and job enqueue (WH-7) not wired yet
   - Acceptance: re-sending a batch creates no duplicates
 - [ ] WH-6 — Raw archive writer (S3-compatible local store TBD — MinIO images discontinued; S3/R2 prod)
   - Acceptance: every accepted batch archived; replay tool restores DB
 - [ ] WH-7 — Job enqueue with debounce per (user, local day)
   - Acceptance: 100 batches in 1 min → 1 job per affected day
-- [ ] WH-8 — Heartbeat endpoint
+- [x] WH-8 — Heartbeat endpoint · 2026-11-07 · `POST /v1/agent/heartbeat` updates last_seen_at, clock_offset_ms, agent_version, queue_depth; returns `server_time` (agent derives clock offset)
   - Acceptance: `devices.last_seen` updated
 - [ ] WH-9 — Agent config endpoint with ETag
   - Acceptance: 304 when unchanged
@@ -75,3 +75,6 @@
 - 2026-11-07: ORM changes needed for this: UUID/time/smallint fields, real FKs (`ondelete`), selection CHECKs, `_sql_constraints`, NULL for `default=None`, `DEFAULT now()` on auto timestamps.
 - 2026-11-07: Keycloak findings: users imported from a realm file get no default roles (no `offline_access` → `not_allowed`), so the dev user lists `default-roles-secretary`; the device grant always shows a consent page; login cookies are `Secure` even over http://localhost.
 - 2026-11-07: Local dev database reset (`public` schema dropped; it held only the old sqlx bookkeeping, no data) so the new schema could be created.
+- 2026-11-07: Device API error contract: `{"error": code}`; 401 `invalid_token` / `device_revoked` (with `WWW-Authenticate`), 403 `device_not_registered` (agent re-registers), 413 `batch_too_large`, 400 `invalid_body` (FastAPI's 422 replaced: it echoes input), 503 `auth_unavailable` when JWKS can't be fetched.
+- 2026-11-07: Event validation lives in `ingest.py` until SH-4/SH-9: v7 event ids, schema_version 1, catalog types, `name@version` source, tz-qualified timestamps, end ≥ start, ≤ 5 min future (adjusted), ≤ 360 days old (partition range), metadata object ≤ 8 KB. Per-type metadata rules come with SH-4.
+- 2026-11-07: Revocation takes effect within the 60 s lookup cache (plan §4.2); overview's revoke (OV-4) also ends the Keycloak session so refresh fails at once.
