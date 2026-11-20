@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "server_time": {
+      "description": "Server clock when the request was handled; the agent derives its\nclock offset from this and the request round trip.",
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "required": [
+    "server_time"
+  ],
+  "title": "HeartbeatResponse",
+  "type": "object"
+}

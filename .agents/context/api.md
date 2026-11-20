@@ -28,7 +28,12 @@ Status: implemented (WH-4, WH-5, WH-8, WH-9). Source: `warehouse/src/secretary_w
 - **Timestamps and clock offset:** `server_adjusted_*` = device time − `clock_offset_ms`. The offset is device − server clock; the agent measures it from the heartbeat's `server_time`.
 - **Validation reasons:** `secretary_shared::validate` (SH-4) defines the rules and the reason codes reported in `rejected[].reason`. Interval types need an end, point types must not span time, and editor paths must be repository-relative.
 - **Agent config:** `GET /v1/agent/config` returns `secretary_shared::config::AgentConfig`, built from the user's `exclusions` rows under RLS. The `ETag` is a hash of the body; `If-None-Match` gets 304. Unknown fields are ignored and missing ones take defaults on both sides, so agent and warehouse versions can differ.
-- **Mirrored by hand:** the warehouse mirrors the `shared/` envelope, validation and `AgentConfig` in `ingest.py` and `agent_config.py` until SH-9 generates a JSON Schema. Change both together.
+- **Generated contract (SH-9):** `shared/src/codegen.rs` generates the files in `warehouse/src/secretary_warehouse/contract/`. The warehouse reads them, and a CI test fails when they are stale.
+  - `*.schema.json`: the envelope, every device API body, and `AgentConfig`.
+  - `constants.json`: event types, limits, reason/error codes, and defaults.
+  - TypeScript types: `shared/bindings/ts/contract.ts`.
+  - Regenerate after any contract change: `SECRETARY_BLESS=1 cargo test -p secretary-shared --features codegen generated`.
+  - **Still by hand:** the semantic rules of `validate.rs` (timestamps, sizes, paths, hashes) are re-implemented in `ingest.py`. Change both together.
 
 ## Contract Rules
 

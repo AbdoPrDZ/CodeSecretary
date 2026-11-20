@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "Exclusions": {
+      "description": "What the agent must never collect. Matching events are dropped before\nthey reach the buffer.",
+      "properties": {
+        "apps": {
+          "default": [],
+          "description": "App names (process or bundle name), exact, `.exe` optional.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "domains": {
+          "default": [],
+          "description": "Domains; each also excludes its subdomains.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "paths": {
+          "default": [],
+          "description": "Path patterns: a plain path excludes it and everything below it;\n`*` matches within one segment, `**` across segments, `?` one character.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "PauseWindow": {
+      "description": "A recurring local-time window, e.g. 12:00–13:00 on weekdays.\n`end` before `start` wraps past midnight (22:00–06:00).",
+      "properties": {
+        "days": {
+          "default": [],
+          "description": "ISO weekdays (1 = Monday … 7 = Sunday) the window *starts* on; empty\nor absent means every day.",
+          "items": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "end": {
+          "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+          "type": "string"
+        },
+        "start": {
+          "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "`GET /v1/agent/config` body.",
+  "properties": {
+    "buffer_max_age_days": {
+      "default": 30,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "edit_aggregation_secs": {
+      "default": 30,
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "exclusions": {
+      "$ref": "#/$defs/Exclusions",
+      "default": {
+        "apps": [],
+        "domains": [],
+        "paths": []
+      }
+    },
+    "heartbeat_interval_secs": {
+      "default": 60,
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "pause_windows": {
+      "default": [],
+      "description": "Collection is paused inside these windows (device local time).",
+      "items": {
+        "$ref": "#/$defs/PauseWindow"
+      },
+      "type": "array"
+    },
+    "project_roots": {
+      "default": [],
+      "description": "Directories the Git tracker scans for repositories (AG-10).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "redaction_version": {
+      "default": 1,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "upload_interval_secs": {
+      "default": 60,
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "upload_max_events": {
+      "default": 500,
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "title": "AgentConfig",
+  "type": "object"
+}

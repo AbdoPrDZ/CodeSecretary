@@ -1,8 +1,11 @@
 """Batch ingest (WH-5): validate, apply clock offset, insert idempotently.
 
 The wire format is defined in ``shared/`` (``secretary_shared::api::BatchRequest``
-and ``event::Event``). Until SH-9 generates a JSON Schema from it, this module
-mirrors it by hand: change both together.
+and ``event::Event``). Event types, limits and reason codes come from the
+generated :mod:`secretary_warehouse.contract`, and each event is checked
+against the generated ``event.schema.json`` (per-type metadata shape). The
+semantic rules of ``secretary_shared::validate`` (timestamps, sizes, paths,
+hashes) are implemented here; keep them in step.
 
 Per batch:
 
@@ -31,39 +34,31 @@ from datetime import UTC, datetime, timedelta
 
 from secretary_orm import Database
 
+from secretary_warehouse import contract
 from secretary_warehouse.db import user_transaction
 
-SCHEMA_VERSIONS = frozenset({1})
-#: ``secretary_shared::event::EVENT_TYPES`` (Phase 1).
-EVENT_TYPES = frozenset({
-  'presence.active', 'presence.idle', 'window.focus',
-  'editor.workspace_open', 'editor.file_focus', 'editor.edit_burst', 'editor.save',
-  'editor.debug_session',
-  'git.commit', 'git.checkout', 'git.merge', 'git.backfill_commit',
-  'agent.heartbeat', 'agent.pause', 'agent.resume', 'agent.buffer_overflow',
-})
-
-#: ``secretary_shared::validate::is_interval``: these need ``timestamp_end``;
-#: every other type is a point (no end, or end == start).
-INTERVAL_TYPES = frozenset({
-  'presence.active', 'presence.idle', 'window.focus',
-  'editor.file_focus', 'editor.edit_burst', 'editor.debug_session',
-})
-#: ``secretary_shared::validate::REQUIRED_FIELDS``.
-REQUIRED_FIELDS = ('event_id', 'schema_version', 'timestamp_start', 'source', 'event_type', 'metadata')
+#: Accepted ``schema_version`` values (N and N-1 once a second exists, SH-22).
+SCHEMA_VERSIONS = frozenset({contract.SCHEMA_VERSION})
+EVENT_TYPES = contract.EVENT_TYPES
+#: These need ``timestamp_end``; every other type is a point (no end, or end == start).
+INTERVAL_TYPES = contract.INTERVAL_TYPES
+REQUIRED_FIELDS = contract.REQUIRED_FIELDS
 #: Metadata fields holding repository-relative paths (privacy rule).
 RELATIVE_PATH_FIELDS = {
   'editor.file_focus': 'file_path', 'editor.edit_burst': 'file_path', 'editor.save': 'file_path',
 }
 _HEX = frozenset('0123456789abcdefABCDEF')
 
-MAX_EVENTS = 1000
-MAX_BODY_BYTES = 1024 * 1024
-MAX_DECOMPRESSED_BYTES = 16 * 1024 * 1024
-MAX_METADATA_BYTES = 8 * 1024
-MAX_TEXT = 2048
-#: Events may not start (server-adjusted) later than this after receipt.
-MAX_FUTURE_SKEW = timedelta(minutes=5)
+_LIMITS = contract.LIMITS
+MAX_EVENTS = _LIMITS['max_batch_events']
+MAX_BODY_BYTES = _LIMITS['max_batch_bytes']
+MAX_DECOMPRESSED_BYTES = 16 * MAX_BODY_BYTES
+MAX_METADATA_BYTES = _LIMITS['max_metadata_bytes']
+MAX_TEXT = _LIMITS['max_text']
+MAX_SOURCE = _LIMITS['max_source']
+MAX_PROJECT_HINT = _LIMITS['max_project_hint']
+#: Events may not end (server-adjusted) later than this after receipt.
+MAX_FUTURE_SKEW = timedelta(seconds=_LIMITS['max_future_skew_secs'])
 #: Older events are refused: partitions exist 12 months back (``app_ensure_event_partitions``).
 MAX_AGE = timedelta(days=360)
 #: A device clock further off than this is broken, not skewed.
@@ -190,7 +185,7 @@ def validate_event(event, now: datetime, offset: timedelta) -> dict:
     raise Rejected('unknown_event_type')
 
   source = event.get('source')
-  if not isinstance(source, str) or len(source) > 128:
+  if not isinstance(source, str) or len(source) > MAX_SOURCE:
     raise Rejected('invalid_source')
   name, at, ver = source.partition('@')
   if not (name and at and ver):
@@ -227,7 +222,7 @@ def validate_event(event, now: datetime, offset: timedelta) -> dict:
     raise Rejected('invalid_repository')
   repository = repository or {}
 
-  return {
+  row = {
     'event_id': str(event_id),
     'schema_version': version,
     'event_type': event_type,
@@ -236,12 +231,17 @@ def validate_event(event, now: datetime, offset: timedelta) -> dict:
     'timestamp_end': None if end is None else iso(end),
     'server_adjusted_start': iso(adjusted_start),
     'server_adjusted_end': None if adjusted_end is None else iso(adjusted_end),
-    'project_hint': _text(event.get('project_hint'), 'invalid_project_hint', 255),
+    'project_hint': _text(event.get('project_hint'), 'invalid_project_hint', MAX_PROJECT_HINT),
     'repository_root': _text(repository.get('root_path'), 'invalid_repository'),
     'repository_remote': _text(repository.get('remote_url'), 'invalid_repository'),
     'working_directory': _text(event.get('working_directory'), 'invalid_working_directory'),
     'metadata': metadata,
   }
+  # Whole-event shape, metadata per type (generated from shared/); after the
+  # field checks above so their more specific reasons win.
+  if not contract.validator('event').is_valid(event):
+    raise Rejected('invalid_metadata')
+  return row
 
 
 INSERT_SQL = """

@@ -39,6 +39,7 @@ pub const SCHEMA_VERSION: u16 = 1;
 
 /// One activity event, already redacted.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct Event {
     pub event_id: EventId,
     pub schema_version: u16,
@@ -85,6 +86,7 @@ impl Event {
 
 /// Collector name and version, serialized as `name@version` (e.g. `vscode@0.3.1`).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codegen", derive(ts_rs::TS), ts(type = "string"))]
 pub struct Source {
     pub name: String,
     pub version: String,
@@ -131,8 +133,25 @@ impl<'de> Deserialize<'de> for Source {
     }
 }
 
+#[cfg(feature = "codegen")]
+impl schemars::JsonSchema for Source {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Source".into()
+    }
+
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "description": "Collector `name@version`, e.g. `vscode@0.3.1`.",
+            "pattern": "^[^@]+@.+$",
+            "maxLength": crate::validate::MAX_SOURCE,
+        })
+    }
+}
+
 /// Repository context: local root and/or normalized remote (`github.com/acme/api`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct RepositoryRef {
     #[serde(default)]
     pub root_path: Option<String>,

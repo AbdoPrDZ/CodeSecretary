@@ -18,6 +18,7 @@ pub const MAX_BATCH_BYTES: usize = 1024 * 1024;
 
 /// `GET /v1/auth/config`: where the agent signs in (D14).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct AuthConfig {
     /// Keycloak realm issuer, e.g. `https://id.example.com/realms/secretary`.
     pub issuer: String,
@@ -28,6 +29,7 @@ pub struct AuthConfig {
 /// `POST /v1/devices`: register this device for the token's Keycloak session.
 /// Idempotent per session; re-sending updates name/OS/version.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct RegisterDevice {
     pub name: String,
     pub os: String,
@@ -35,21 +37,26 @@ pub struct RegisterDevice {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct DeviceRegistered {
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub device_id: i64,
 }
 
 /// `POST /v1/events:batch` body (gzip JSON, `Content-Encoding: gzip`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct BatchRequest {
     /// Random per upload attempt; names the raw archive object (WH-6).
     pub batch_id: Uuid,
     /// Device clock minus server clock, in milliseconds (see [`HeartbeatResponse`]).
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub clock_offset_ms: i64,
     pub events: Vec<Event>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct BatchResponse {
     /// Stored now.
     pub accepted: Vec<EventId>,
@@ -61,6 +68,7 @@ pub struct BatchResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct Rejection {
     /// As sent; may be absent or malformed when that is the reason.
     #[serde(default)]
@@ -71,13 +79,17 @@ pub struct Rejection {
 
 /// `POST /v1/agent/heartbeat`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct Heartbeat {
     pub agent_version: String,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub queue_depth: u64,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub clock_offset_ms: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct HeartbeatResponse {
     /// Server clock when the request was handled; the agent derives its
     /// clock offset from this and the request round trip.
@@ -86,6 +98,7 @@ pub struct HeartbeatResponse {
 
 /// Error body of every non-2xx `/v1/...` response.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct ApiError {
     pub error: String,
 }

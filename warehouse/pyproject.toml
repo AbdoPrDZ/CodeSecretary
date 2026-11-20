@@ -14,6 +14,7 @@ dependencies = [
   "psycopg[binary]==3.3.6",
   "psycopg-pool==3.3.3",
   "pyjwt[crypto]==2.10.1",    # Keycloak access tokens (RS256 + JWKS)
+  "jsonschema==4.25.1",       # generated contract schemas (SH-9)
 ]
 
 [project.optional-dependencies]
@@ -30,6 +31,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "secretary_warehouse.schema" = ["sql/*.sql"]
+"secretary_warehouse.contract" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

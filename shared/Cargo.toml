@@ -14,5 +14,12 @@ regex.workspace = true
 url.workspace = true
 uuid.workspace = true
 
+schemars = { workspace = true, optional = true }
+ts-rs = { workspace = true, optional = true }
+
+[features]
+# JSON Schema + TypeScript generation (SH-9); used by the staleness test.
+codegen = ["dep:schemars", "dep:ts-rs"]
+
 [lints]
 workspace = true

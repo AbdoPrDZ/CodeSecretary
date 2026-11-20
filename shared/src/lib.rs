@@ -11,10 +11,12 @@
 //! - [`api`]: request/response bodies of the warehouse device API
 //!   (blueprint Appendix C).
 //!
-//! The Python warehouse mirrors these types by hand until SH-9 generates a
-//! JSON Schema from this crate; change both together.
+//! With the `codegen` feature, [`codegen`] generates the JSON Schemas and
+//! constants the Python services read, and the TypeScript types (SH-9).
 
 pub mod api;
+#[cfg(feature = "codegen")]
+pub mod codegen;
 pub mod config;
 pub mod event;
 pub mod ids;

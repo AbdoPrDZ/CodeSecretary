@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "`GET /v1/auth/config`: where the agent signs in (D14).",
+  "properties": {
+    "client_id": {
+      "description": "OIDC client the agent uses (`secretary-agent`).",
+      "type": "string"
+    },
+    "issuer": {
+      "description": "Keycloak realm issuer, e.g. `https://id.example.com/realms/secretary`.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "issuer",
+    "client_id"
+  ],
+  "title": "AuthConfig",
+  "type": "object"
+}

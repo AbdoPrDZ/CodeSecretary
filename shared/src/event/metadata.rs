@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// `event_type` + `metadata`, adjacently tagged so the envelope stays flat.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 #[serde(tag = "event_type", content = "metadata")]
 pub enum Payload {
     #[serde(rename = "presence.active")]
@@ -89,9 +90,11 @@ impl Payload {
 
 /// No metadata (`{}`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct Empty {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct WindowFocus {
     #[serde(default)]
     pub app: Option<String>,
@@ -101,6 +104,7 @@ pub struct WindowFocus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct EditorWorkspaceOpen {
     pub workspace_path: String,
     #[serde(default)]
@@ -108,6 +112,7 @@ pub struct EditorWorkspaceOpen {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct EditorFileFocus {
     pub file_path: String,
     #[serde(default)]
@@ -115,23 +120,27 @@ pub struct EditorFileFocus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct EditorEditBurst {
     pub file_path: String,
     pub edit_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct EditorSave {
     pub file_path: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct EditorDebugSession {
     #[serde(default)]
     pub configuration_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct GitCommit {
     pub hash: String,
     #[serde(default)]
@@ -143,6 +152,7 @@ pub struct GitCommit {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct GitCheckout {
     #[serde(default)]
     pub from_branch: Option<String>,
@@ -151,12 +161,14 @@ pub struct GitCheckout {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct GitMerge {
     #[serde(default)]
     pub branch: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct GitBackfillCommit {
     pub hash: String,
     #[serde(default)]
@@ -166,13 +178,17 @@ pub struct GitBackfillCommit {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct AgentHeartbeat {
     pub agent_version: String,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub queue_depth: u64,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub clock_offset_ms: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 #[serde(rename_all = "snake_case")]
 pub enum PauseReason {
     User,
@@ -180,13 +196,16 @@ pub enum PauseReason {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct AgentPauseChange {
     pub reason: PauseReason,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct AgentBufferOverflow {
     /// Events dropped (oldest first).
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub dropped: u64,
 }
 

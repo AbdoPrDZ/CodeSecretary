@@ -21,11 +21,11 @@
   - Acceptance: redaction corpus (≥ 100 secret samples) — zero survive
 - [x] SH-6 — URL stripping and remote URL normalization · 2026-11-20 · `redact/url.rs`: `strip_url` (no userinfo/query/fragment, token-like segments → `:id`), `normalize_remote` (scp, ssh, https, git, Azure `v3/` → `host/path`; local paths → none); 36 table-driven cases
   - Acceptance: table-driven tests incl. edge cases
-- [ ] SH-7 — Device API types (auth config, register, batch, heartbeat, config) · 🚧 in progress · 2026-11-07
+- [ ] SH-7 — Device API types (auth config, register, batch, heartbeat, config) · 🚧 in progress · 2026-11-20 · types in `api.rs` / `config.rs`; warehouse takes event types, limits, codes and defaults from the generated contract and checks event shape against `event.schema.json`; pydantic request models are tested against the generated schemas; left: the semantic validation rules (`validate.rs`) are still re-implemented in `ingest.py` (cannot be generated as schema)
   - Acceptance: used by agent and warehouse without duplication
 - [x] SH-8 — AgentConfig + Appendix A defaults · 2026-11-20 · `config.rs`: `defaults` (all Appendix A values, typed), `AgentConfig` (serde defaults on every field, so old and new agents interoperate), `Exclusions` (path globs / app names / domains incl. subdomains; case-insensitive, `\` = `/`), `PauseWindow` (`HH:MM`, wraps midnight, ISO weekdays); 7 tests incl. "defaults match Appendix A"
   - Acceptance: defaults match blueprint
-- [ ] SH-9 — TS type generation (`ts-rs`) → `agent/vscode`, `overview/web`
+- [ ] SH-9 — Type generation: TS (`ts-rs`) → `agent/vscode`, `overview/web`; JSON Schema (`schemars`) → warehouse, overview API · 🚧 in progress · 2026-11-20 · `codegen.rs` (feature `codegen`): 10 JSON Schemas + `constants.json` → `warehouse/src/secretary_warehouse/contract/`, TS → `shared/bindings/ts/contract.ts`; test `generated_files_are_current` fails when stale (verified locally by editing a file), `SECRETARY_BLESS=1` regenerates; CI runs it; warehouse loads constants + validates events against the schema; left: first CI run; TS copied into `agent/vscode` / `overview/web` once those packages exist (AG-13, OV-1)
   - Acceptance: CI fails if generated types are stale
 
 ## Phase 2
@@ -49,3 +49,8 @@
 - 2026-11-20 (SH-5): The corpus stores each fake secret split into parts, joined by the test, so the repo never holds a contiguous token (no secret-scanner or push-protection hits). Regenerate it with `shared/fixtures/gen_redaction_corpus.py`.
   - **Deviation:** `redaction_version` is not written into each event's metadata (plan §4.2). It is in `AgentConfig`, and adding a metadata field would change the contract for every type. Revisit with SH-22.
   - **Over-redaction is accepted:** long hex or base64 strings in titles (e.g. full Git hashes) are masked, and so is any value after a key ending in key/token/secret/password/auth.
+- 2026-11-20 (SH-9):
+  - **Generated TypeScript** lives in `shared/bindings/ts/` until the TS packages exist.
+  - **Feature-gated generators:** `schemars` and `ts-rs` sit behind the `codegen` feature, so the agent binary does not compile them.
+  - **64-bit integers** are forced to `number` in TS, matching JSON.
+  - **Warehouse dependency:** it now needs `jsonschema==4.25.1`. Its event check runs after the field checks, so specific reasons (`invalid_repository`, …) still win over `invalid_metadata`.

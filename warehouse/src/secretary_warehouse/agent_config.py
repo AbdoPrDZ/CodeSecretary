@@ -1,8 +1,8 @@
 """Agent configuration (WH-9): ``GET /v1/agent/config`` with an ``ETag``.
 
-The body mirrors ``secretary_shared::config::AgentConfig`` (Rust); change both
-together until SH-9 generates a schema. Built from the user's ``exclusions``
-rows under RLS:
+The body is ``secretary_shared::config::AgentConfig`` (Rust); its schema and
+defaults come from the generated :mod:`secretary_warehouse.contract`. Built
+from the user's ``exclusions`` rows under RLS:
 
 - ``path`` / ``app`` / ``domain`` rows → ``exclusions.paths|apps|domains``;
 - ``time_window`` rows → ``pause_windows`` (device local time, ISO weekdays).
@@ -22,17 +22,14 @@ from datetime import time
 
 from secretary_orm import Database
 
+from secretary_warehouse import contract
 from secretary_warehouse.db import user_transaction
 
-#: ``secretary_shared::config::REDACTION_VERSION``.
-REDACTION_VERSION = 1
-#: ``secretary_shared::config::defaults`` (blueprint Appendix A), agent part.
+REDACTION_VERSION = contract.REDACTION_VERSION
+#: ``secretary_shared::config::AgentConfig::default()`` timings (blueprint Appendix A).
 DEFAULTS = {
-  'upload_interval_secs': 60,
-  'upload_max_events': 500,
-  'heartbeat_interval_secs': 60,
-  'buffer_max_age_days': 30,
-  'edit_aggregation_secs': 30,
+  key: value for key, value in contract.AGENT_CONFIG_DEFAULTS.items()
+  if key not in ('exclusions', 'pause_windows', 'project_roots', 'redaction_version')
 }
 
 _KINDS = {'path': 'paths', 'app': 'apps', 'domain': 'domains'}

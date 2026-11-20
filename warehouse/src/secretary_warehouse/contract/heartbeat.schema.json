@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "`POST /v1/agent/heartbeat`.",
+  "properties": {
+    "agent_version": {
+      "type": "string"
+    },
+    "clock_offset_ms": {
+      "format": "int64",
+      "type": "integer"
+    },
+    "queue_depth": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "agent_version",
+    "queue_depth",
+    "clock_offset_ms"
+  ],
+  "title": "Heartbeat",
+  "type": "object"
+}

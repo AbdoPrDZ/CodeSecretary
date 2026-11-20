@@ -58,6 +58,7 @@ pub const REDACTION_VERSION: u32 = 1;
 
 /// `GET /v1/agent/config` body.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 #[serde(default)]
 pub struct AgentConfig {
     pub exclusions: Exclusions,
@@ -66,10 +67,13 @@ pub struct AgentConfig {
     /// Directories the Git tracker scans for repositories (AG-10).
     pub project_roots: Vec<String>,
     pub redaction_version: u32,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub upload_interval_secs: u64,
     pub upload_max_events: u32,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub heartbeat_interval_secs: u64,
     pub buffer_max_age_days: u32,
+    #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub edit_aggregation_secs: u64,
 }
 
@@ -107,6 +111,7 @@ impl AgentConfig {
 /// What the agent must never collect. Matching events are dropped before
 /// they reach the buffer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 #[serde(default)]
 pub struct Exclusions {
     /// Path patterns: a plain path excludes it and everything below it;
@@ -156,10 +161,21 @@ impl Exclusions {
 /// A recurring local-time window, e.g. 12:00–13:00 on weekdays.
 /// `end` before `start` wraps past midnight (22:00–06:00).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
 pub struct PauseWindow {
     #[serde(with = "hh_mm")]
+    #[cfg_attr(
+        feature = "codegen",
+        schemars(with = "String", regex(pattern = r"^\d{2}:\d{2}(:\d{2})?$")),
+        ts(type = "string")
+    )]
     pub start: NaiveTime,
     #[serde(with = "hh_mm")]
+    #[cfg_attr(
+        feature = "codegen",
+        schemars(with = "String", regex(pattern = r"^\d{2}:\d{2}(:\d{2})?$")),
+        ts(type = "string")
+    )]
     pub end: NaiveTime,
     /// ISO weekdays (1 = Monday … 7 = Sunday) the window *starts* on; empty
     /// or absent means every day.

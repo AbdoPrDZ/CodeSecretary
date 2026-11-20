@@ -8,8 +8,9 @@
 //!   sizes, per-type rules). The agent runs it before buffering (AG-6).
 //!
 //! The reason codes ([`Invalid::code`]) are the `reason` values the warehouse
-//! reports in `BatchResponse::rejected`; the Python warehouse mirrors these
-//! rules in `ingest.py` until SH-9 generates a schema. Change both together.
+//! reports in `BatchResponse::rejected`. The warehouse gets the constants
+//! and the event shape from the generated contract (`codegen`, SH-9) but
+//! re-implements these rules in `ingest.py`. Change both together.
 //!
 //! Error values never carry event contents, so they are safe to log.
 

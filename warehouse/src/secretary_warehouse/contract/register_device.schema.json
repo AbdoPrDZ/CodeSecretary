@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "`POST /v1/devices`: register this device for the token's Keycloak session.\nIdempotent per session; re-sending updates name/OS/version.",
+  "properties": {
+    "agent_version": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "os": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "os",
+    "agent_version"
+  ],
+  "title": "RegisterDevice",
+  "type": "object"
+}

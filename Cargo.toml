@@ -26,6 +26,9 @@ uuid = { version = "1", features = ["v4", "v7", "serde"] }
 serde_json = "1"
 secretary-shared = { path = "shared" }
 regex = "1"
+# Contract generation (shared, feature `codegen`): JSON Schema + TypeScript.
+schemars = { version = "1", features = ["chrono04", "uuid1"] }
+ts-rs = { version = "11", features = ["chrono-impl", "uuid-impl", "serde-json-impl", "no-serde-warnings"] }
 url = "2"
 
 # Engine (Rust). Warehouse and overview are Python (D15).
