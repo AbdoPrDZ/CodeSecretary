@@ -1,0 +1,21 @@
+# TLS with our own certificate (deploy/vps/make_certs.py): an IP address has
+# no public CA certificate here, so Caddy must not try ACME.
+{
+	auto_https off
+	admin off
+}
+
+# Warehouse device API.
+:8443 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy warehouse:8080
+}
+
+# Keycloak: it builds its public URLs from KC_HOSTNAME and these headers.
+:8444 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy keycloak:8080 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Port 8444
+	}
+}

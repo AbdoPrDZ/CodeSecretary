@@ -1,0 +1,79 @@
+# CodeSecretary on the VPS, reached by IP over HTTPS (private CA).
+#
+#   https://<PUBLIC_IP>:8443  warehouse device API
+#   https://<PUBLIC_IP>:8444  Keycloak (issuer https://<PUBLIC_IP>:8444/realms/secretary)
+#
+# Variables come from `.env`, which deploy.py builds on the VPS from:
+#   .env.docker  (yours)  SECRETARY_WH_DB_* and SECRETARY_KC_DB_* for the existing
+#                         it-pg-db; the databases and their owners are yours
+#   .env.deploy  (deploy) PUBLIC_IP, WAREHOUSE_TAG, KEYCLOAK_ADMIN_PASSWORD,
+#                         WAREHOUSE_APP_PASSWORD
+#
+# The warehouse migrates as the table owner (SECRETARY_WH_DB_USERNAME) but serves
+# requests as `secretary_warehouse`, a separate login bound by row-level
+# security (the owner would bypass it). Only Caddy publishes ports.
+
+name: secretary
+
+services:
+  warehouse:
+    image: secretary-warehouse:${WAREHOUSE_TAG:?}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_APP_PASSWORD:?}@${SECRETARY_WH_DB_HOSTNAME:?}:5432/${SECRETARY_WH_DB_NAME:?}
+      DATABASE_MIGRATION_URL: postgres://${SECRETARY_WH_DB_USERNAME:?}:${SECRETARY_WH_DB_PASSWORD:?}@${SECRETARY_WH_DB_HOSTNAME}:5432/${SECRETARY_WH_DB_NAME}
+      WAREHOUSE_BIND: 0.0.0.0:8080
+      LOG_FORMAT: json
+      LOG_LEVEL: info
+      KEYCLOAK_ISSUER: https://${PUBLIC_IP:?}:8444/realms/secretary
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/secretary/protocol/openid-connect/certs
+    networks: [default, it-db-net]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${SECRETARY_KC_DB_HOSTNAME:?}:5432/${SECRETARY_KC_DB_NAME:?}
+      KC_DB_USERNAME: ${SECRETARY_KC_DB_USERNAME:?}
+      KC_DB_PASSWORD: ${SECRETARY_KC_DB_PASSWORD:?}
+      # Public URL (through Caddy); the warehouse uses the backchannel.
+      KC_HOSTNAME: https://${PUBLIC_IP}:8444
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+    volumes:
+      - ./keycloak-import:/opt/keycloak/data/import:ro
+    networks: [default, it-db-net]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 &&
+          grep -q '"UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+      - "8444:8444"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+    depends_on:
+      - warehouse
+      - keycloak
+
+networks:
+  it-db-net:
+    external: true

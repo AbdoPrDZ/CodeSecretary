@@ -88,3 +88,9 @@ Rust (agent, engine, `shared/`; tokio, sqlx) · Python 3.13 (warehouse, overview
 ## Deployment Shape
 
 Local dev and self-hosting: one Compose file (Postgres, Keycloak, warehouse now; S3-compatible store (WH-6), engine and overview later). Managed hosting undecided (open decision OD2).
+
+**Single VPS (`deploy/vps/`).** Status: implemented (2026-11-20), a test deployment, not the OD2 decision.
+- **How it ships:** `deploy.py` builds the warehouse image locally and streams it over SSH into `docker load`; there is no registry. It writes `compose.yml` and a `Caddyfile` to the folder named by `DIR` in the git-ignored `.ssh.env`.
+- **Postgres:** the server's existing `it-pg-db`, reached on the external `it-db-net` network. Its databases and owner logins are the server owner's (`.env.docker` on the VPS). The deploy adds only `secretary_app` and `secretary_warehouse`, the RLS-bound runtime login.
+- **TLS:** Caddy terminates TLS with a private CA certificate for the IP (`make_certs.py`). The warehouse is on `:8443`, Keycloak on `:8444`, and the issuer is `https://<ip>:8444/realms/secretary`. Clients must trust `deploy/vps/secrets/certs/ca.crt`.
+- **Realm:** imported without the dev test user.

@@ -60,3 +60,7 @@ desktop.ini
 
 # ── Claude Code local settings ───────
 .claude/settings.local.json
+
+# VPS access and deployment secrets (never commit)
+.ssh.env
+deploy/vps/secrets/

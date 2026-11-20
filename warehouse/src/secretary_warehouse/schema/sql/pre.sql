@@ -4,11 +4,15 @@
 -- Only what the ORM cannot create belongs here: roles and the partitioned
 -- shell of activity_events (the ORM adds and checks its other columns).
 
+-- Check first: on a shared server the owner has no CREATEROLE, and Postgres
+-- checks that privilege before it notices the role already exists.
 DO $$
 BEGIN
-    CREATE ROLE secretary_app NOLOGIN NOBYPASSRLS;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'secretary_app') THEN
+        CREATE ROLE secretary_app NOLOGIN NOBYPASSRLS;
+    END IF;
 EXCEPTION
-    WHEN duplicate_object THEN NULL;  -- roles are cluster-wide; may already exist
+    WHEN duplicate_object THEN NULL;  -- roles are cluster-wide; created concurrently
 END
 $$;
 

@@ -144,3 +144,4 @@
 | 2026-11-20 | Decision D16: Android app (collector + companion) in Phase 2, no iOS; tasks AG-27–29, SH-23, WH-24, EN-28, OV-24 added |
 | 2026-11-20 | M1: redaction engine + corpus (SH-5), URL stripping + remote normalization (SH-6), agent pipeline redacts before buffering (AG-6 done) |
 | 2026-11-20 | M1: contract generation (SH-9): JSON Schemas + constants for the warehouse, TypeScript types, CI staleness check; warehouse validates event shape against the generated schema |
+| 2026-11-20 | VPS test deployment (`deploy/vps/`): warehouse image built locally and loaded over SSH; Keycloak + warehouse behind Caddy (HTTPS by IP, private CA) on the server's existing Postgres `it-pg-db`; `pre.sql` no longer needs CREATEROLE when `secretary_app` exists |
