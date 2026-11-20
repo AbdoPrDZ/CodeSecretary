@@ -100,6 +100,7 @@ Each session stores its evidence event IDs; each assignment stores method, confi
 | EN-25 | AI request logging (`ai_request_log`) with exact fields sent |
 | EN-26 | Grounded daily/weekly summaries with evidence references |
 | EN-27 | Browser research association (docs/issues/Q&A domains → active project) |
+| EN-28 | Android events: phone presence and app focus credit only when mapped to a project (package-name mappings); desktop wins overlaps (D16) |
 
 ### Phase 3
 

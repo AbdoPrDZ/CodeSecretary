@@ -17,7 +17,8 @@ File contents · keystroke content · clipboard · screenshots/screen recording 
 - URLs: drop query, fragment, userinfo; token-like path segments → `:id`.
 - Window titles: mask emails and secret patterns; truncate.
 - Secret patterns (API keys, tokens, JWTs, `Bearer …`, `*_KEY=…`, credentialed connection strings, private key headers) are masked everywhere.
-- Paths are sent repo-relative plus repository root.
+- Paths are sent repo-relative plus repository root. Validation (`shared/`, mirrored in the warehouse) rejects absolute, `~` and `..` editor paths.
+- **Exclusions and pause windows** are applied in the agent before buffering, so excluded activity never reaches disk. Matching is case-insensitive and generous: over-matching only hides data. Status: implemented (AG-7).
 - Redaction rules are versioned; every change is validated by the redaction corpus test (zero survivors).
 
 ## Visibility

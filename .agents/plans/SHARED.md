@@ -102,6 +102,7 @@ pub struct Event {
 | SH-20 | Event types: `terminal.command`, `browser.tab_focus`, `fs.change` |
 | SH-21 | Terminal argument opt-in redaction path |
 | SH-22 | `schema_version` 2 migration helpers (accept N and N-1) |
+| SH-23 | Kotlin types + validation for the Android app from the SH-9 JSON Schema; CI fails if stale (D16) |
 
 ### Phase 3
 

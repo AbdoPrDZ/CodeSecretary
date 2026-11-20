@@ -13,7 +13,10 @@ Status: device login and the agent → warehouse upload path implemented (M1 dem
 
 Implemented so far:
 
-- **Agent side:** only the presence collector exists. Its events carry no metadata, so they go straight to the buffer; the step-2 pipeline arrives with AG-6.
+- **Agent side:** the step-2 pipeline exists without the redact step, which waits for SH-5. So far only the presence collector uses it.
+  - **Exclusions:** an event touching an excluded path or app is dropped whole.
+  - **Pause windows:** device local time. Point events inside a window are dropped; intervals are cut at the window edges. `agent.pause` / `agent.resume` (`exclusion_window`) mark the edges.
+  - **Config:** cached in `agent_config.json`, so it applies from the first event after a restart and while signed out or offline. It is refetched every 5 min with the `ETag`.
 - **Warehouse side:** steps 4's authenticate, validate, adjust and insert are done. The raw archive (WH-6) and job enqueue (WH-7) are not.
 - **Buffer rule:** buffered events leave the agent only when the warehouse acknowledges them, as accepted, duplicate or rejected. A lost response therefore costs a resend, never a duplicate.
 

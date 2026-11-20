@@ -67,6 +67,7 @@
 - [ ] OV-21 — AI summaries with evidence links
 - [ ] OV-22 — Rule proposals UI
 - [ ] OV-23 — Collector/device health, coverage gaps on timeline
+- [ ] OV-24 — Android companion endpoints + package-name mappings (D16)
 
 ## Phase 3
 - [ ] OV-30 — Invite-only sign-up (friends)

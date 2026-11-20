@@ -39,6 +39,7 @@ Secretary/
 │  ├─ daemon/                 # crate: secretary-agent
 │  ├─ vscode/                 # VS Code extension (TS)
 │  ├─ browser/                # WebExtension (TS) — Phase 2
+│  ├─ android/                # Android app (Kotlin): collector + companion — Phase 2 (D16)
 │  └─ shell/                  # Shell hooks — Phase 2
 ├─ warehouse/
 │  └─ src/secretary_warehouse/ # Python: device API, ingest; schema/ = ORM models + SQL (ALL tables)
@@ -114,7 +115,7 @@ M0 ──► M1 ──► M2 ──┐
 
 | Phase | Shared | Agent | Warehouse | Engine | Overview |
 |---|---|---|---|---|---|
-| **2 — Collectors & AI** | Event types for terminal/browser/fs | Terminal hooks, browser ext, FS tracker | Native-messaging-independent; batch limits review | AI classification, rule suggestions, summaries, coverage-gap views | AI settings, AI log view, health views; field encryption |
+| **2 — Collectors & AI** | Event types for terminal/browser/fs; Kotlin types for Android | Terminal hooks, browser ext, FS tracker; Android app (D16) | Native-messaging-independent; batch limits review; accept the Android client | AI classification, rule suggestions, summaries, coverage-gap views | AI settings, AI log view, health views; field encryption |
 | **3 — Friends & Teams** | Team config types | Team project links | Invite-only signup support, rate limits | Shared rules, resubmission notices | Workspaces, roles, invites, submissions, team reports, audit log, self-host package |
 | **4 — Billing & Enterprise** | — | — | — | Rounding, billable/waiting policy | Rates, budgets, Excel, integrations, SSO |
 

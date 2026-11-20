@@ -329,3 +329,101 @@ async fn heartbeat_reports_depth_and_measures_clock_offset() {
     let offset = f.clock.get();
     assert!((-601_000..=-599_000).contains(&offset), "offset {offset}");
 }
+
+// ------------------------------------------------------------- agent config (AG-7)
+
+#[tokio::test]
+async fn config_is_fetched_cached_and_revalidated_with_its_etag() {
+    use crate::remote_config::{ConfigCache, ConfigTask};
+
+    let f = Fixture::new(true).await;
+    f.token_ok("access-1", "refresh-2").await;
+    // With the cached ETag → 304; registered first so it takes priority.
+    Mock::given(method("GET"))
+        .and(path("/v1/agent/config"))
+        .and(header("if-none-match", "\"v1\""))
+        .respond_with(ResponseTemplate::new(304).insert_header("etag", "\"v1\""))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/agent/config"))
+        .and(header("authorization", "Bearer access-1"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("etag", "\"v1\"")
+                .set_body_json(json!({
+                    "exclusions": {"paths": ["/secret"], "apps": ["Slack"], "domains": []},
+                    "pause_windows": [{"start": "12:00", "end": "13:00", "days": [1]}],
+                    "project_roots": [], "redaction_version": 1,
+                })),
+        )
+        .expect(1)
+        .mount(&f.server)
+        .await;
+
+    let cache_file = f._home.path().join("agent_config.json");
+    let task = ConfigTask {
+        warehouse: f.warehouse.clone(),
+        cache: Arc::new(ConfigCache::load(&cache_file)),
+        every: Duration::from_secs(300),
+    };
+    assert_eq!(task.refresh().await, Duration::from_secs(300));
+    let active = task.cache.current();
+    assert_eq!(active.config.exclusions.apps, ["Slack"]);
+    assert_eq!(active.config.pause_windows.len(), 1);
+    assert_eq!(
+        active.config.upload_max_events, 500,
+        "missing fields default"
+    );
+    assert!(active.exclusions.excludes_path("/secret/notes.md"));
+
+    // Second fetch sends the ETag and keeps the cached config on 304.
+    task.refresh().await;
+    assert_eq!(task.cache.current().config.exclusions.apps, ["Slack"]);
+
+    // A restart starts from the cache, before any fetch.
+    let restarted = ConfigCache::load(&cache_file);
+    assert_eq!(restarted.etag().as_deref(), Some("\"v1\""));
+    assert!(restarted.current().exclusions.excludes_app("slack.exe"));
+
+    let requests = f.server.received_requests().await.unwrap();
+    let config_calls: Vec<_> = requests
+        .iter()
+        .filter(|r| r.url.path() == "/v1/agent/config")
+        .collect();
+    assert_eq!(config_calls.len(), 2);
+    assert!(config_calls[0].headers.get("if-none-match").is_none());
+}
+
+#[tokio::test]
+async fn config_fetch_failure_keeps_the_cached_config() {
+    use crate::remote_config::{ConfigCache, ConfigTask};
+    use secretary_shared::config::AgentConfig;
+
+    let f = Fixture::new(true).await;
+    f.token_ok("access-1", "refresh-2").await;
+    Mock::given(method("GET"))
+        .and(path("/v1/agent/config"))
+        .respond_with(ResponseTemplate::new(503))
+        .mount(&f.server)
+        .await;
+
+    let cache = Arc::new(ConfigCache::load(&f._home.path().join("agent_config.json")));
+    let mut cached = AgentConfig::default();
+    cached.exclusions.paths.push("/secret".into());
+    cache
+        .replace(cached.clone(), Some("\"v0\"".into()))
+        .unwrap();
+    let task = ConfigTask {
+        warehouse: f.warehouse.clone(),
+        cache: cache.clone(),
+        every: Duration::from_secs(300),
+    };
+    assert_eq!(
+        task.refresh().await,
+        Duration::from_secs(60),
+        "retries sooner"
+    );
+    assert_eq!(cache.current().config, cached);
+}

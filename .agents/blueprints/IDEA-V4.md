@@ -480,6 +480,16 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 
 ✅ supported · ⚠️ best-effort / requires permission or extension
 
+**Android (Phase 2, D16):** one app, `agent/android/`, that is both a collector and a companion. iOS is not supported: it gives apps no access to other apps' usage.
+
+| Signal / feature | Android | How |
+|---|---|---|
+| Presence (screen on and unlocked) | ✅ | `UsageStatsManager` events (`SCREEN_INTERACTIVE`, `KEYGUARD_HIDDEN` / `SHOWN`) → `presence.active` / `presence.idle` |
+| Foreground app | ⚠️ needs the "Usage access" permission | `UsageEvents` (`ACTIVITY_RESUMED` / `PAUSED`) → `window.focus` with `app` = package name and **no title** |
+| Window titles, notifications, screen content | ❌ never | No accessibility service, notification listener or screen capture |
+| Editor, Git, terminal, browser collectors | ❌ | Desktop only |
+| Companion | ✅ | Today's total, sessions to review, pause / resume tracking on this phone |
+
 ## 16. Technology Stack and Key Decisions
 
 ### 16.1 Stack
@@ -522,6 +532,7 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 | D12 | Browser and editor extensions talk to the local agent, not the cloud | One authenticated upload path; redaction and buffering in one place |
 | D13 | AI off by default; stricter of user and workspace policy wins | Privacy-first; product must work on rules alone |
 | D15 | **Warehouse and dashboard API in Python on `secretary-orm`; the ORM owns the schema** (2026-11-07) | One model definition for every Python service, written in the owner's own ORM (from J-ERP); tables, columns, indexes, FKs and checks come from the models, while RLS policies, grants, partitions and SECURITY DEFINER functions stay in idempotent SQL run in the same migration transaction. The event contract reaches Python as JSON Schema generated from `shared/`. Cost: two backend languages; bigint ids instead of UUIDs (agent event IDs stay UUIDv7) |
+| D16 | **Android app (Phase 2): collector + companion; no iOS** (2026-11-20) | Phone work (reviewing PRs, chat, docs) is part of project time, and Android exposes app usage through `UsageStatsManager`. iOS has no equivalent. Kotlin, not the Rust daemon: the Android APIs are JVM-first, and the event contract comes from the SH-9 JSON Schema. Sign-in uses Keycloak authorization code + PKCE (client `secretary-android`); the device grant is for devices without a convenient browser |
 | D14 | **Keycloak is the identity provider for users and devices** (2026-11-07) | One standard auth system (OIDC, device grant, MFA, social login, enterprise SSO) instead of custom device tokens; self-hosters can reuse it. Cost: an extra JVM service in Compose, token refresh in the agent. Authorization (workspaces, roles, RLS) stays in Postgres |
 
 ---
@@ -554,6 +565,7 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 ### Phase 2 — More Collectors and AI
 
 - Terminal tracker, browser extension, file system tracker.
+- Android app (D16): presence and foreground-app collector, plus companion (today's total, review, pause).
 - AI layer: classification, research association, rule suggestions, summaries; user AI setting.
 - Collector/device health and coverage-gap views.
 - Application-level encryption of sensitive metadata.

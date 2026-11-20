@@ -4,6 +4,9 @@
 //! is refreshed once and the call retried; a second `401` (e.g.
 //! `device_revoked`) signs the agent out. On `403 device_not_registered` the
 //! device registers itself and the call is retried once.
+//!
+//! `GET /v1/agent/config` is conditional: the cached `ETag` goes in
+//! `If-None-Match`, and `304` means the cached config is still current.
 
 use std::io::Write;
 use std::sync::Arc;
@@ -17,6 +20,7 @@ use secretary_shared::api::{
     ApiError as ErrorBody, BatchRequest, BatchResponse, DeviceRegistered, Heartbeat,
     HeartbeatResponse, RegisterDevice, error_code,
 };
+use secretary_shared::config::AgentConfig;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tracing::info;
@@ -56,8 +60,21 @@ impl From<LinkError> for ApiError {
 
 /// A request body, prepared once and re-sent on retry.
 enum Body {
+    /// `GET`, no body.
+    None,
     Json(Vec<u8>),
     Gzip(Vec<u8>),
+}
+
+/// Result of [`Warehouse::fetch_config`].
+#[derive(Debug, PartialEq)]
+pub enum ConfigFetch {
+    /// `304`: the cached config (with the `ETag` sent) is current.
+    NotModified,
+    Changed {
+        config: AgentConfig,
+        etag: Option<String>,
+    },
 }
 
 pub struct Warehouse {
@@ -105,19 +122,61 @@ impl Warehouse {
             .await
     }
 
+    /// `GET /v1/agent/config`, conditional on the cached `etag`.
+    pub async fn fetch_config(&self, etag: Option<&str>) -> Result<ConfigFetch, ApiError> {
+        let response = self
+            .exchange("/v1/agent/config", &Body::None, etag, true)
+            .await?;
+        if response.status() == StatusCode::NOT_MODIFIED {
+            return Ok(ConfigFetch::NotModified);
+        }
+        let etag = response
+            .headers()
+            .get(reqwest::header::ETAG)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+        let config = response.json().await.map_err(|err| {
+            ApiError::Transient(anyhow::Error::new(err).context("invalid agent config"))
+        })?;
+        Ok(ConfigFetch::Changed { config, etag })
+    }
+
     async fn send<R: DeserializeOwned>(
         &self,
         path: &str,
         body: Body,
         may_register: bool,
     ) -> Result<R, ApiError> {
+        let response = self.exchange(path, &body, None, may_register).await?;
+        response.json().await.map_err(|err| {
+            ApiError::Transient(anyhow::Error::new(err).context("invalid warehouse response"))
+        })
+    }
+
+    /// One call with the auth retries; returns any 2xx or `304` response.
+    async fn exchange(
+        &self,
+        path: &str,
+        body: &Body,
+        if_none_match: Option<&str>,
+        may_register: bool,
+    ) -> Result<reqwest::Response, ApiError> {
         let (mut token, mut account) = self.link.access_token().await?;
         let mut refreshed = false;
         let mut registered = !may_register;
         loop {
             let url = format!("{}{path}", account.server_url.trim_end_matches('/'));
-            let request = self.http.post(&url).bearer_auth(&token);
-            let request = match &body {
+            let request = match body {
+                Body::None => self.http.get(&url),
+                _ => self.http.post(&url),
+            }
+            .bearer_auth(&token);
+            let request = match if_none_match {
+                Some(tag) => request.header(reqwest::header::IF_NONE_MATCH, tag),
+                None => request,
+            };
+            let request = match body {
+                Body::None => request,
                 Body::Json(bytes) => request
                     .header(reqwest::header::CONTENT_TYPE, "application/json")
                     .body(bytes.clone()),
@@ -130,12 +189,8 @@ impl Warehouse {
                 ApiError::Transient(anyhow::Error::new(err).context("warehouse unreachable"))
             })?;
             let status = response.status();
-            if status.is_success() {
-                return response.json().await.map_err(|err| {
-                    ApiError::Transient(
-                        anyhow::Error::new(err).context("invalid warehouse response"),
-                    )
-                });
+            if status.is_success() || status == StatusCode::NOT_MODIFIED {
+                return Ok(response);
             }
             let code = response
                 .json::<ErrorBody>()

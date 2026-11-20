@@ -25,7 +25,8 @@ use secretary_shared::event::{Empty, Payload};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
-use crate::buffer::{Buffer, agent_source};
+use crate::buffer::agent_source;
+use crate::pipeline::Pipeline;
 use crate::platform::Platform;
 use crate::probe::{Presence, classify};
 
@@ -155,13 +156,13 @@ impl Tracker {
 }
 
 /// Runs the collector on a blocking thread (OS handles need not be `Send`).
-pub async fn run(buffer: Arc<Buffer>, token: CancellationToken) -> anyhow::Result<()> {
-    let handle = tokio::task::spawn_blocking(move || collect(&buffer, &token));
+pub async fn run(pipeline: Arc<Pipeline>, token: CancellationToken) -> anyhow::Result<()> {
+    let handle = tokio::task::spawn_blocking(move || collect(&pipeline, &token));
     handle.await?;
     Ok(())
 }
 
-fn collect(buffer: &Buffer, token: &CancellationToken) {
+fn collect(pipeline: &Pipeline, token: &CancellationToken) {
     let mut platform = match Platform::connect() {
         Ok(platform) => platform,
         Err(err) => {
@@ -182,7 +183,7 @@ fn collect(buffer: &Buffer, token: &CancellationToken) {
             Ok(idle) => {
                 last_error = None;
                 for interval in tracker.observe(Utc::now(), idle) {
-                    store(buffer, interval);
+                    pipeline.submit(interval.into_event());
                 }
             }
             Err(err) => {
@@ -197,15 +198,9 @@ fn collect(buffer: &Buffer, token: &CancellationToken) {
     }
 
     if let Some(interval) = tracker.finish(Utc::now()) {
-        store(buffer, interval);
+        pipeline.submit(interval.into_event());
     }
     debug!("presence collector stopped");
-}
-
-fn store(buffer: &Buffer, interval: Interval) {
-    if let Err(err) = buffer.push(&interval.into_event()) {
-        warn!(error = %format!("{err:#}"), "could not buffer a presence event");
-    }
 }
 
 fn sleep_unless_cancelled(token: &CancellationToken, total: Duration) {

@@ -36,7 +36,7 @@
   - Acceptance: 100 batches in 1 min → 1 job per affected day
 - [x] WH-8 — Heartbeat endpoint · 2026-11-07 · `POST /v1/agent/heartbeat` updates last_seen_at, clock_offset_ms, agent_version, queue_depth; returns `server_time` (agent derives clock offset)
   - Acceptance: `devices.last_seen` updated
-- [ ] WH-9 — Agent config endpoint with ETag
+- [x] WH-9 — Agent config endpoint with ETag · 2026-11-20 · `GET /v1/agent/config` (`agent_config.py`): body = `secretary_shared::config::AgentConfig` built from the user's `exclusions` under RLS (path/app/domain → exclusions, time_window → pause_windows), Appendix A agent timings; ETag = hash of the body, `If-None-Match` (strong or weak) → 304; tests: defaults + 304, exclusion change → new ETag + body, other user sees nothing, 401/403 without device. Project roots always `[]` (no storage yet)
   - Acceptance: 304 when unchanged
 - [ ] WH-10 — Rate limiting per device
   - Acceptance: excess → 429 with `Retry-After`
@@ -62,6 +62,7 @@
 - [ ] WH-21 — Application-level encryption of sensitive metadata
 - [ ] WH-22 — Retention job + archive lifecycle rules
 - [ ] WH-23 — Token anomaly detection → notify user
+- [ ] WH-24 — Accept the `secretary-android` client (realm client, `azp` allow-list) (D16)
 
 ## Phase 3
 - [ ] WH-30 — Workspace-level policies in agent config

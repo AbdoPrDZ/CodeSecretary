@@ -61,6 +61,11 @@ impl AgentPaths {
         self.data_dir.join("state.json")
     }
 
+    /// Last `AgentConfig` fetched from the warehouse, with its `ETag` (AG-7).
+    pub fn agent_config_file(&self) -> PathBuf {
+        self.data_dir.join("agent_config.json")
+    }
+
     /// Local event buffer (SQLite), holding redacted events until acknowledged.
     pub fn buffer_file(&self) -> PathBuf {
         self.data_dir.join("buffer.sqlite3")

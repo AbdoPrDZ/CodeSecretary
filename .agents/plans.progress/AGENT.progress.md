@@ -25,9 +25,9 @@
   - Acceptance: offline 1 h → all events delivered exactly once on reconnect
 - [x] AG-5 — Heartbeat · 2026-11-14 · every 60 s (first after 1 s): version, queue depth, clock offset; offset = round-trip midpoint − `server_time`; E2E: devices.last_seen_at and queue_depth updated
   - Acceptance: every 60 s with version, queue depth, clock offset
-- [ ] AG-6 — Pipeline: validate → exclusions → redact → buffer
+- [ ] AG-6 — Pipeline: validate → exclusions → redact → buffer · 🚧 in progress · 2026-11-20 · `pipeline.rs`: validate (shared) → exclusions → pause windows → buffer; presence uses it; 8 tests; left: redact step + corpus test on the agent path (needs SH-5)
   - Acceptance: redaction corpus passes on the agent path
-- [ ] AG-7 — Config fetch + cache, apply exclusions and pause
+- [x] AG-7 — Config fetch + cache, apply exclusions and pause · 2026-11-20 · `remote_config.rs`: `GET /v1/agent/config` every 5 min with `If-None-Match`, cached in `agent_config.json` (used from startup, offline and signed out), `PauseWatch` emits `agent.pause`/`agent.resume` (`exclusion_window`); pipeline applies path/app exclusions and cuts intervals at pause edges; tests: 3 cache + 8 pipeline + 2 mock-server; E2E on Windows + Compose: pause 14:33–14:35 local → pause/resume stored, presence interval cut into 13:32:45–13:33:00 and 13:35:00–13:37:45 UTC; exclusion added while running → applied after 4 min 44 s
   - Acceptance: dashboard change applies within 5 min
 
 ### M2
@@ -70,6 +70,9 @@
 - [ ] AG-24 — Native messaging host registration per OS/browser
 - [ ] AG-25 — File system tracker with ignore rules
 - [ ] AG-26 — Local "what was collected" viewer
+- [ ] AG-27 — Android: skeleton, sign-in (AppAuth + PKCE), device registration
+- [ ] AG-28 — Android: usage-events collector, Room buffer, uploader, heartbeat
+- [ ] AG-29 — Android: config fetch, companion screens (today, review, pause, collected)
 
 ## Phase 3
 - [ ] AG-30 — Show team project links in tray
@@ -77,8 +80,13 @@
 
 ## Notes
 - 2026-11-14: Daemon layout is flatter than plan §3 for now: `auth/` (oidc, store, `Link`), `api.rs`, `buffer.rs`, `uploader.rs`, `heartbeat.rs`, `presence.rs`, `state.rs`, `login.rs`. Split into `collectors/` when the focus and git collectors land.
-- 2026-11-14: Presence events go straight to the buffer: they carry no metadata, so the AG-6 pipeline (validate → exclusions → redact) is not needed for them yet. Focus (AG-9) must wait for SH-5 redaction.
+- 2026-11-14: Presence events go straight to the buffer: they carry no metadata, so the AG-6 pipeline (validate → exclusions → redact) is not needed for them yet. Focus (AG-9) must wait for SH-5 redaction. (Superseded 2026-11-20: presence now goes through the pipeline.)
 - 2026-11-14: Collector idle threshold is 60 s; the engine applies the user's idle threshold (Appendix A, 5 min) on top.
 - 2026-11-14: The keychain entry is per installation (`CodeSecretary` / `refresh-token/<installation_id>` from state.json), so separate agent homes never share a token. The daemon never touches the keychain until `login` has written state.json.
 - 2026-11-14: When the warehouse reports a revoked device, the agent deletes its keychain entry but does not end the Keycloak session; overview's revoke (OV-4) ends it. Events buffered while signed out are uploaded under the next device registration.
 - 2026-11-14: Linux builds need `libdbus-1-dev` (keyring's Secret Service backend); added to CI.
+- 2026-11-20 (AG-6/AG-7): The pipeline runs validate → exclusions → **pause** → (redact) → buffer.
+  - **Pause windows:** applied in device local time. Point events inside a window are dropped. Intervals are cut at the window edges: the first piece keeps the event id, later pieces get new ones. `agent.*` events are exempt, so the `agent.pause` / `agent.resume` markers themselves are kept.
+  - **Exclusions:** an event is dropped whole if its repository root, working directory, workspace path, root + file path, or focused app matches. A leading `~` in path patterns is expanded to the home directory.
+  - **Config cache:** `agent_config.json` survives `logout`, because events buffered while signed out are uploaded later and must still be filtered.
+  - **Not yet driven by config:** upload, heartbeat and edit-aggregation timings are still the built-in constants (equal to the defaults), and `project_roots` is unused until AG-10.

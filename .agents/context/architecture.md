@@ -45,9 +45,20 @@ Shell hooks ─┘   collect · redact ·                    │ enqueue (user, 
 5. Private until submitted — teammates see only submitted totals.
 6. Self-hostable via Docker Compose.
 
+## Android App
+
+Status: planned (Phase 2, D16). Source: blueprint §15, D16; [AGENT plan](../plans/AGENT.md) §3.5.
+
+- Kotlin app in `agent/android/`, both a collector and a companion; iOS is not supported.
+- **Same contract as the daemon:**
+  - events from the SH-9 JSON Schema (SH-23)
+  - the same device API
+  - its own Keycloak client `secretary-android` (auth code + PKCE)
+- **Collects only:** presence, from screen and lock events, and the foreground app as a package name, read in batches from `UsageStatsManager`. Never titles, notifications or content.
+
 ## Agent Daemon Runtime
 
-Status: implemented (AG-1 skeleton, AG-2/3/5; AG-4 and AG-8 in progress). Source: `agent/daemon/src/`.
+Status: implemented (AG-1 skeleton, AG-2/3/5/7; AG-4, AG-6 and AG-8 in progress). Source: `agent/daemon/src/`.
 
 - One process per OS user. An exclusive OS file lock (`<data>/agent.lock`) blocks a second instance. The OS releases it on exit or crash, so stale locks are impossible.
 - Directories come from OS conventions (`directories` crate, app name `secretary`). `SECRETARY_HOME` moves all of them to `<dir>/{config,data,logs}`. On Unix the directories are created with mode `0700`.
@@ -55,15 +66,19 @@ Status: implemented (AG-1 skeleton, AG-2/3/5; AG-4 and AG-8 in progress). Source
 - Every long-running component is started through the `Supervisor` with a `CancellationToken`. On a stop signal (SIGINT/TERM/HUP, or Windows console close/logoff/shutdown) all tokens are cancelled. Components get a 4 s grace period, then they are aborted.
 - Stable exit codes: 0 ok, 1 failure, 2 config, 3 already running.
 - **Components (`run`):**
-  - `presence`: a blocking thread polling idle time every 5 s; it emits intervals into the buffer.
+  - `presence`: a blocking thread polling idle time every 5 s; it emits intervals into the pipeline.
+  - `pipeline` (not a task): validate → exclusions → pause windows → (redact, SH-5) → buffer. Every collector goes through it; nothing else writes to the buffer.
+  - `config`: `GET /v1/agent/config` every 5 min with the cached `ETag`.
+  - `pause`: checks local time every 5 s and emits `agent.pause` / `agent.resume` at pause-window edges.
   - `uploader`: buffer → `POST /v1/events:batch`.
   - `heartbeat`: `POST /v1/agent/heartbeat`, which also measures the clock offset.
 - **Shared state:** the uploader and heartbeat share a `Link` (sign-in state, access token) and a `ClockOffset`.
 - **Files under `<data>`:**
   - `buffer.sqlite3`: a SQLite FIFO, WAL mode, bounded at 30 days or 500k rows.
   - `state.json`: sign-in settings and the device id, with no secrets.
+  - `agent_config.json`: the last fetched `AgentConfig` and its `ETag`. It survives `logout` on purpose: events buffered while signed out are uploaded later, so they must still be filtered.
 - **CLI-only commands:** `login`, `logout` and `status` never take the instance lock, so they work while the daemon runs.
-- **Contract types** come from `secretary-shared` (`shared/`): the event envelope, the Phase 1 event catalog, and the device API bodies.
+- **Contract types** come from `secretary-shared` (`shared/`): the event envelope, the Phase 1 event catalog, validation, `AgentConfig` with the Appendix A defaults, and the device API bodies.
 - OS integration is in `platform/`, one module per OS behind the same `Platform` API (`idle_time`, `focused_window`, `titles_available`). Collectors build on it (AG-8/AG-9). It returns raw titles, so callers must redact them before buffering and never log them. On macOS the app comes from `CGWindowListCopyWindowInfo`, which needs no run loop or permission. Titles come from the Accessibility API and need permission. On Linux only X11 is supported: Wayland works only for apps running under XWayland, and native Wayland support is AG-8.
 
 ## Stack

@@ -140,6 +140,7 @@ Raw archive write happens before DB insert; if DB insert fails, the archive allo
 | WH-21 | Application-level encryption of sensitive metadata fields (envelope encryption, per-user data key, KMS / local key provider) |
 | WH-22 | Retention job: compact raw events > 12 months; archive lifecycle rules |
 | WH-23 | Token anomaly detection (new region/IP) → notify user |
+| WH-24 | Accept the `secretary-android` client: Keycloak realm client (public, PKCE, offline access), `azp` allow-list, device `os = android` (D16) |
 
 ### Phase 3
 

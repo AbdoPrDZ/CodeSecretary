@@ -107,6 +107,7 @@ The UI shows a "recalculating…" state until the job completes (poll job status
 | OV-21 | AI summaries display with evidence links |
 | OV-22 | Rule proposals UI |
 | OV-23 | Collector / device health, coverage gaps on timeline |
+| OV-24 | Companion endpoints for the Android app (today total, review queue) and package-name mapping rules (D16) |
 
 ### Phase 3
 

@@ -1,6 +1,6 @@
 # APIs
 
-Status: device API partly implemented (auth config, devices, batch ingest, heartbeat; agent config is WH-9); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest}.py`, `shared/src/api.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
+Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
 
 ## Surfaces
 
@@ -14,7 +14,7 @@ Status: device API partly implemented (auth config, devices, batch ingest, heart
 
 ## Device API Behaviour
 
-Status: implemented (WH-4, WH-5, WH-8). Source: `warehouse/src/secretary_warehouse/`.
+Status: implemented (WH-4, WH-5, WH-8, WH-9). Source: `warehouse/src/secretary_warehouse/`.
 
 - **Token checks:** RS256 signature against the realm JWKS (cached, refetched on an unknown `kid`), `iss` = configured issuer, `aud` ∋ `secretary-warehouse`, `azp` = `secretary-agent`, `typ` = `Bearer`, `exp`/`nbf`/`iat` with 30 s leeway, and `sub`, `sid`, `email` present.
 - **Identity:** `sub` → user via `app_resolve_identity()` (first sight provisions the user + personal workspace). `sid` → device. Lookups are cached ≤ 60 s, so a revocation takes effect within a minute.
@@ -26,7 +26,9 @@ Status: implemented (WH-4, WH-5, WH-8). Source: `warehouse/src/secretary_warehou
   - 503 `auth_unavailable`, when the JWKS cannot be fetched.
 - **Batch limits:** ≤ 1 MB as sent (gzip or plain JSON), ≤ 16 MB inflated, ≤ 1,000 events. An invalid event is rejected on its own, with a reason code; the rest of the batch is stored.
 - **Timestamps and clock offset:** `server_adjusted_*` = device time − `clock_offset_ms`. The offset is device − server clock; the agent measures it from the heartbeat's `server_time`.
-- **Mirrored validation:** the warehouse mirrors the `shared/` envelope and validation by hand in `ingest.py` until SH-9 generates a JSON Schema. Change both together.
+- **Validation reasons:** `secretary_shared::validate` (SH-4) defines the rules and the reason codes reported in `rejected[].reason`. Interval types need an end, point types must not span time, and editor paths must be repository-relative.
+- **Agent config:** `GET /v1/agent/config` returns `secretary_shared::config::AgentConfig`, built from the user's `exclusions` rows under RLS. The `ETag` is a hash of the body; `If-None-Match` gets 304. Unknown fields are ignored and missing ones take defaults on both sides, so agent and warehouse versions can differ.
+- **Mirrored by hand:** the warehouse mirrors the `shared/` envelope, validation and `AgentConfig` in `ingest.py` and `agent_config.py` until SH-9 generates a JSON Schema. Change both together.
 
 ## Contract Rules
 

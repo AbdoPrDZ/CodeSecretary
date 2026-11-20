@@ -4,7 +4,7 @@ The local agent. It collects activity evidence, redacts it, buffers it, and send
 
 | Folder | What | Status |
 |---|---|---|
-| `daemon/` | Rust daemon `secretary-agent` | Keycloak sign-in, presence collector, SQLite buffer, uploader, heartbeat (AG-1–5, AG-8) |
+| `daemon/` | Rust daemon `secretary-agent` | Keycloak sign-in, presence collector, pipeline with exclusions and pause windows, SQLite buffer, uploader, heartbeat, remote config (AG-1–8) |
 | `vscode/` | VS Code extension | Planned (AG-13) |
 | `browser/` | Browser extension | Phase 2 |
 | `shell/` | Shell hooks | Phase 2 |
@@ -37,6 +37,7 @@ Start the local stack first (`docker compose up -d --build --wait`; dev user `de
 2. `run` collects `presence.active` / `presence.idle` intervals into the local buffer (`<data>/buffer.sqlite3`). The uploader sends them every 60 s (or at 500 events) as gzip batches to `POST /v1/events:batch` and deletes them only once acknowledged. A heartbeat every 60 s reports version, queue depth and clock offset.
 3. Access tokens live only in memory and are refreshed before they expire; Keycloak rotates the refresh token each time.
 4. If the device is revoked or the session ends, the agent signs itself out and logs `run secretary-agent login`. Collection continues into the buffer, and a new `login` resumes uploading without a restart.
+5. Every event passes the pipeline before it is buffered: validation, then the user's **exclusions** (paths, apps) and **pause windows** (local time; intervals are cut at the edges, with `agent.pause` / `agent.resume` markers). The rules come from `GET /v1/agent/config`, refetched every 5 min and cached in `<data>/agent_config.json` so they also apply offline.
 
 `<data>/state.json` holds the sign-in settings and the device id, but no tokens. Linux builds need `libdbus-1-dev` and `pkg-config`.
 

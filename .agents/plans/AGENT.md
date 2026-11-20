@@ -14,6 +14,7 @@ The only component that runs on the developer's machine. It **collects, redacts,
 | VS Code extension | `agent/vscode/` | TypeScript | 1 |
 | Browser extension | `agent/browser/` | TypeScript (WebExtensions) | 2 |
 | Shell hooks | `agent/shell/` | Bash, Zsh, Fish, PowerShell | 2 |
+| Android app (collector + companion, D16) | `agent/android/` | Kotlin, Jetpack | 2 |
 
 ## 3. Daemon Architecture
 
@@ -83,6 +84,25 @@ collector ─► pipeline: validate (shared) ─► exclusions ─► redact (sh
 - `POST /local/v1/events` — same envelope as shared; agent assigns nothing but validates and pipelines.
 - Reject requests with an `Origin` header (blocks websites); require bearer token.
 
+### 3.5 Android App (`agent/android/`, Phase 2, D16)
+
+One app that is both a collector and a companion, with the same contract as the daemon. iOS is out of scope.
+
+- **Sign-in:** Keycloak authorization code + PKCE in a Custom Tab (AppAuth), client `secretary-android`, scope `openid offline_access`. The refresh token is encrypted with an Android Keystore key, and the access token stays in memory. Then `POST /v1/devices` with `os = "android"`.
+- **Collection:** batch, not polling. A `WorkManager` job (about every 15 min, and when the app opens) reads `UsageStatsManager.queryEvents` since its last checkpoint.
+  - Screen interactive / keyguard events → `presence.active` / `presence.idle` intervals.
+  - App resumed / paused → `window.focus` intervals with `app` = package name and `title` = none.
+  - Source `android@<version>`.
+- **Permission:** "Usage access" (`PACKAGE_USAGE_STATS`) is granted by the user in system settings. Without it the app collects nothing and says so.
+- **Pipeline:** the same steps as the daemon, in Kotlin: validate → exclusions (apps = package names) → pause windows → buffer. Validation follows the SH-9 JSON Schema. There is no redaction step, because no free text is collected.
+- **Buffer and upload:** a Room (SQLite) FIFO with the daemon's rules: bounded, acknowledge before delete, the same gzip batches, heartbeat and clock offset.
+- **Companion:**
+  - today's total and sessions to review, from the overview API
+  - pause / resume on this phone, emitting `agent.pause` / `agent.resume`
+  - a "what was collected" view
+- **Never:** accessibility services, notification listeners, screen capture, location, contacts, or any content.
+- **Distribution:** a signed APK first (GitHub releases, F-Droid). Play Store review needs a justification for `PACKAGE_USAGE_STATS`; that is a later decision.
+
 ## 4. VS Code Extension (`agent/vscode/`)
 
 - Activates on startup; reads local agent port/token file.
@@ -139,6 +159,9 @@ collector ─► pipeline: validate (shared) ─► exclusions ─► redact (sh
 | AG-24 | Native messaging host registration per OS/browser |
 | AG-25 | File system tracker for project roots (`notify` crate) with ignore rules |
 | AG-26 | Local "what was collected" viewer (tray → open last 100 events, redacted) |
+| AG-27 | Android: project skeleton, sign-in (AppAuth + PKCE, Keystore-encrypted refresh token), device registration |
+| AG-28 | Android: usage-events collector (presence + foreground app) with checkpointing, Room buffer, uploader, heartbeat |
+| AG-29 | Android: config fetch (exclusions, pause windows), companion screens (today total, review, pause, collected events) |
 
 ### Phase 3
 
@@ -172,3 +195,5 @@ collector ─► pipeline: validate (shared) ─► exclusions ─► redact (sh
 | Wayland gaps | Document; app-level only; encourage VS Code ext |
 | Antivirus flags (input idle APIs, local server) | Code signing; avoid low-level hooks — only idle-time APIs |
 | Shell hook breaks user's shell | Hooks are no-op on error; uninstall restores backups |
+| Android OEMs kill background work; usage events kept only ~days | Catch up when the app opens; checkpoint every run; show "last synced" |
+| Phone time inflates project time | Engine credits phone focus only when mapped to a project (EN-28) |

@@ -196,12 +196,50 @@ def test_validate_event_rules():
   assert reason(source='agent') == 'invalid_source'
   assert reason(timestamp_end=(now - timedelta(hours=1)).isoformat()) == 'invalid_timestamps'
   assert reason(timestamp_start='2026-11-07T09:00:00') == 'invalid_timestamps'  # no zone
-  assert reason(timestamp_start=future, timestamp_end=None) == 'timestamp_in_future'
-  assert reason(timestamp_start=(now - timedelta(days=400)).isoformat(), timestamp_end=None) == \
-    'timestamp_out_of_range'
+  assert reason(timestamp_start=future, timestamp_end=future) == 'timestamp_in_future'
+  old = (now - timedelta(days=400)).isoformat()
+  assert reason(timestamp_start=old, timestamp_end=old) == 'timestamp_out_of_range'
   assert reason(metadata=[]) == 'invalid_metadata'
   assert reason(metadata={'title': 'x' * 9000}) == 'metadata_too_large'
   assert reason(repository='github.com/acme/api') == 'invalid_repository'
+
+
+def test_validate_event_mirrors_shared_rules():
+  # secretary_shared::validate (SH-4); keep both in step.
+  now = datetime.now(UTC)
+  zero = timedelta(0)
+
+  def reason(**overrides):
+    with pytest.raises(Rejected) as exc:
+      validate_event(event(**overrides), now, zero)
+    return exc.value.reason
+
+  for name in ('event_id', 'schema_version', 'timestamp_start', 'source', 'event_type', 'metadata'):
+    assert reason(**{name: None}) == 'missing_field', name
+  assert reason(timestamp_end=None) == 'invalid_timestamps'  # interval without an end
+  start = (now - timedelta(minutes=5)).isoformat()
+
+  def save(path, **overrides):
+    return dict(dict(event_type='editor.save', timestamp_start=start, timestamp_end=None,
+                     metadata={'file_path': path}), **overrides)
+
+  validate_event(event(**save('src/main.rs')), now, zero)
+  validate_event(event(**save('src/main.rs', timestamp_end=start)), now, zero)  # end == start
+  assert reason(**save('src/main.rs', timestamp_end=now.isoformat())) == 'invalid_timestamps'
+  for bad in ['', '  ', '/home/dev/x.rs', 'C:\\x.rs', 'c:/x', '\\\\server\\x', '~/x', '../x',
+              'a\\..\\x']:
+    assert reason(**save(bad)) == 'invalid_field', bad
+  # Size is UTF-8 bytes: 4,100 two-byte characters exceed 8 KB.
+  assert reason(metadata={'title': 'é' * 4100}) == 'metadata_too_large'
+
+  def commit(event_type='git.commit', **metadata):
+    return dict(event_type=event_type, timestamp_start=start, timestamp_end=None, metadata=metadata)
+
+  validate_event(event(**commit(hash='a1b2c3d')), now, zero)
+  assert reason(**commit(hash='xyz1234')) == 'invalid_field'
+  assert reason(**commit(hash='abc')) == 'invalid_field'
+  validate_event(event(**commit('git.backfill_commit', hash='a1b2c3d', estimated=True)), now, zero)
+  assert reason(**commit('git.backfill_commit', hash='a1b2c3d', estimated=False)) == 'invalid_metadata'
 
 
 def test_clock_offset_is_subtracted():
@@ -287,7 +325,7 @@ def test_invalid_events_are_rejected_individually(client, test_db):
   assert response.status_code == 200
   result = response.json()
   assert sorted(result['accepted']) == sorted([good['event_id'], repeated['event_id']])
-  assert [r['reason'] for r in result['rejected']] == ['unknown_event_type', 'invalid_event_id']
+  assert [r['reason'] for r in result['rejected']] == ['unknown_event_type', 'missing_field']
   assert test_db.admin.execute('SELECT count(*) AS n FROM activity_events').fetchone()['n'] == 2
 
 
@@ -359,3 +397,65 @@ def test_users_only_see_their_own_events(client, app_env):
     user_id = authenticator.device(f'Bearer {token}').user_id
     with user_transaction(app_env.db, user_id) as conn:
       assert conn.execute('SELECT count(*) AS n FROM activity_events').fetchone()['n'] == n
+
+
+# ------------------------------------------------------------- agent config (WH-9)
+
+OTHER = dict(sub='kc-user-2', sid='session-u2', email='other@example.test')
+
+
+def test_agent_config_defaults_etag_and_304(client, test_db):
+  register(client)
+  response = client.get('/v1/agent/config', headers=auth(mint()))
+  assert response.status_code == 200
+  assert response.json() == {
+    'exclusions': {'paths': [], 'apps': [], 'domains': []},
+    'pause_windows': [], 'project_roots': [], 'redaction_version': 1,
+    'upload_interval_secs': 60, 'upload_max_events': 500, 'heartbeat_interval_secs': 60,
+    'buffer_max_age_days': 30, 'edit_aggregation_secs': 30,
+  }
+  tag = response.headers['etag']
+  assert tag.startswith('"') and tag.endswith('"')
+
+  unchanged = client.get('/v1/agent/config', headers={**auth(mint()), 'If-None-Match': tag})
+  assert unchanged.status_code == 304 and unchanged.content == b''
+  assert unchanged.headers['etag'] == tag
+  weak = client.get('/v1/agent/config', headers={**auth(mint()), 'If-None-Match': f'"x", W/{tag}'})
+  assert weak.status_code == 304
+  stale = client.get('/v1/agent/config', headers={**auth(mint()), 'If-None-Match': '"stale"'})
+  assert stale.status_code == 200
+
+
+def test_agent_config_reflects_exclusions(client, test_db):
+  register(client)
+  before = client.get('/v1/agent/config', headers=auth(mint())).headers['etag']
+  user_id = client.app.state.authenticator.device(f'Bearer {mint()}').user_id
+  test_db.admin.execute(
+    """INSERT INTO exclusions (user_id, kind, pattern, window_start, window_end, days_of_week) VALUES
+       (%(u)s, 'path', '/home/dev/private', NULL, NULL, NULL),
+       (%(u)s, 'app', 'Slack', NULL, NULL, NULL),
+       (%(u)s, 'domain', 'bank.example', NULL, NULL, NULL),
+       (%(u)s, 'time_window', NULL, '12:00', '13:00', '[5, 1, 2, 3, 4]'),
+       (%(u)s, 'time_window', NULL, '22:00', '06:00', NULL)""",
+    {'u': user_id},
+  )
+  response = client.get('/v1/agent/config', headers={**auth(mint()), 'If-None-Match': before})
+  assert response.status_code == 200, 'a config change must change the ETag'
+  config = response.json()
+  assert config['exclusions'] == {'paths': ['/home/dev/private'], 'apps': ['Slack'],
+                                  'domains': ['bank.example']}
+  assert config['pause_windows'] == [
+    {'start': '12:00', 'end': '13:00', 'days': [1, 2, 3, 4, 5]},
+    {'start': '22:00', 'end': '06:00', 'days': []},
+  ]
+
+  # Another user sees none of it (RLS), and still gets the default config.
+  register(client, mint(**OTHER))
+  other = client.get('/v1/agent/config', headers=auth(mint(**OTHER)))
+  assert other.json()['exclusions'] == {'paths': [], 'apps': [], 'domains': []}
+  assert other.json()['pause_windows'] == []
+
+
+def test_agent_config_needs_a_registered_device(client):
+  assert client.get('/v1/agent/config').status_code == 401
+  assert client.get('/v1/agent/config', headers=auth(mint())).status_code == 403

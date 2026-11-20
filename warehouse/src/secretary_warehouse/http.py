@@ -15,11 +15,11 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, Header, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from secretary_orm import Environment
 
-from secretary_warehouse import __version__
+from secretary_warehouse import __version__, agent_config
 from secretary_warehouse.auth import (
   AuthError,
   Authenticator,
@@ -157,6 +157,21 @@ def create_app(
       'duplicates': len(result.duplicates), 'rejected': len(result.rejected),
     })
     return result.as_json(datetime.now(UTC))
+
+  @app.get('/v1/agent/config')
+  def get_agent_config(
+    authorization: str | None = Header(default=None),
+    if_none_match: str | None = Header(default=None),
+  ):
+    """Exclusions, pause windows, project roots and timings (``AgentConfig``) with an ETag."""
+
+    principal = authenticator.device(authorization)
+    config = agent_config.build(env.db, principal.user_id)
+    tag = agent_config.etag(config)
+    headers = {'ETag': tag, 'Cache-Control': 'private, no-cache'}
+    if agent_config.matches(if_none_match, tag):
+      return Response(status_code=304, headers=headers)
+    return JSONResponse(config, headers=headers)
 
   @app.post('/v1/agent/heartbeat')
   def heartbeat(body: Heartbeat, authorization: str | None = Header(default=None)):

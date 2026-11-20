@@ -62,6 +62,7 @@
 - [ ] EN-25 — AI request logging
 - [ ] EN-26 — Grounded daily/weekly summaries
 - [ ] EN-27 — Browser research association
+- [ ] EN-28 — Android events: credit only when mapped; desktop wins overlaps (D16)
 
 ## Phase 3
 - [ ] EN-30 — Shared mapping rules in resolution order

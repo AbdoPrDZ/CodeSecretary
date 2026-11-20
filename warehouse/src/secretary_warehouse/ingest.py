@@ -43,6 +43,20 @@ EVENT_TYPES = frozenset({
   'agent.heartbeat', 'agent.pause', 'agent.resume', 'agent.buffer_overflow',
 })
 
+#: ``secretary_shared::validate::is_interval``: these need ``timestamp_end``;
+#: every other type is a point (no end, or end == start).
+INTERVAL_TYPES = frozenset({
+  'presence.active', 'presence.idle', 'window.focus',
+  'editor.file_focus', 'editor.edit_burst', 'editor.debug_session',
+})
+#: ``secretary_shared::validate::REQUIRED_FIELDS``.
+REQUIRED_FIELDS = ('event_id', 'schema_version', 'timestamp_start', 'source', 'event_type', 'metadata')
+#: Metadata fields holding repository-relative paths (privacy rule).
+RELATIVE_PATH_FIELDS = {
+  'editor.file_focus': 'file_path', 'editor.edit_burst': 'file_path', 'editor.save': 'file_path',
+}
+_HEX = frozenset('0123456789abcdefABCDEF')
+
 MAX_EVENTS = 1000
 MAX_BODY_BYTES = 1024 * 1024
 MAX_DECOMPRESSED_BYTES = 16 * 1024 * 1024
@@ -157,6 +171,8 @@ def ingest(db: Database, user_id: int, device_id: int, body: dict, now: datetime
 def validate_event(event, now: datetime, offset: timedelta) -> dict:
   if not isinstance(event, dict):
     raise Rejected('invalid_event')
+  if any(event.get(name) is None for name in REQUIRED_FIELDS):
+    raise Rejected('missing_field')
 
   try:
     event_id = uuid.UUID(event.get('event_id') or '')
@@ -184,6 +200,10 @@ def validate_event(event, now: datetime, offset: timedelta) -> dict:
   end = _timestamp(event.get('timestamp_end'), required=False)
   if end is not None and end < start:
     raise Rejected('invalid_timestamps')
+  if event_type in INTERVAL_TYPES and end is None:
+    raise Rejected('invalid_timestamps')
+  if event_type not in INTERVAL_TYPES and end is not None and end != start:
+    raise Rejected('invalid_timestamps')
   adjusted_start = start - offset
   adjusted_end = None if end is None else end - offset
   latest = now + MAX_FUTURE_SKEW
@@ -196,9 +216,11 @@ def validate_event(event, now: datetime, offset: timedelta) -> dict:
   metadata = event.get('metadata')
   if not isinstance(metadata, dict):
     raise Rejected('invalid_metadata')
-  metadata_json = json.dumps(metadata, separators=(',', ':'))
+  # Compact UTF-8, as serde_json measures it in the agent.
+  metadata_json = json.dumps(metadata, separators=(',', ':'), ensure_ascii=False)
   if len(metadata_json.encode()) > MAX_METADATA_BYTES:
     raise Rejected('metadata_too_large')
+  _check_metadata(event_type, metadata)
 
   repository = event.get('repository')
   if repository is not None and not isinstance(repository, dict):
@@ -264,6 +286,25 @@ def _timestamp(value, required: bool) -> datetime | None:
   if parsed.tzinfo is None:
     raise Rejected('invalid_timestamps')  # device times must be UTC / offset-qualified
   return parsed.astimezone(UTC)
+
+
+def _check_metadata(event_type: str, metadata: dict) -> None:
+  """The per-type rules of ``secretary_shared::validate`` that guard privacy and correctness."""
+  path_field = RELATIVE_PATH_FIELDS.get(event_type)
+  if path_field is not None:
+    path = metadata.get(path_field)
+    if not isinstance(path, str) or not path.strip() or len(path) > MAX_TEXT:
+      raise Rejected('invalid_field')
+    absolute = path.startswith(('/', '\\', '~')) or (len(path) >= 2 and path[0].isascii()
+                                                      and path[0].isalpha() and path[1] == ':')
+    if absolute or '..' in path.replace('\\', '/').split('/'):
+      raise Rejected('invalid_field')
+  if event_type in ('git.commit', 'git.backfill_commit'):
+    commit = metadata.get('hash')
+    if not isinstance(commit, str) or not 7 <= len(commit) <= 64 or not set(commit) <= _HEX:
+      raise Rejected('invalid_field')
+  if event_type == 'git.backfill_commit' and metadata.get('estimated') is not True:
+    raise Rejected('invalid_metadata')
 
 
 def _text(value, reason: str, limit: int = MAX_TEXT) -> str | None:

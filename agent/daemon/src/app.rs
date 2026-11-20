@@ -13,6 +13,8 @@ use crate::buffer::Buffer;
 use crate::config::LocalConfig;
 use crate::heartbeat::{ClockOffset, HEARTBEAT_EVERY, HeartbeatTask};
 use crate::paths::AgentPaths;
+use crate::pipeline::Pipeline;
+use crate::remote_config::{CONFIG_REFRESH, ConfigCache, ConfigTask, PAUSE_CHECK, PauseWatch};
 use crate::supervisor::{ShutdownOutcome, Supervisor};
 use crate::uploader::{UPLOAD_EVERY, Uploader};
 use crate::{presence, shutdown};
@@ -42,12 +44,27 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
     ));
     let warehouse = Arc::new(Warehouse::new(http, link));
     let clock = Arc::new(ClockOffset::default());
+    let config_cache = Arc::new(ConfigCache::load(&paths.agent_config_file()));
+    let pipeline = Arc::new(Pipeline::new(buffer.clone(), config_cache.clone()));
 
     let mut supervisor = Supervisor::new();
-    supervisor.spawn("presence", {
-        let buffer = buffer.clone();
-        move |token| presence::run(buffer, token)
+    supervisor.spawn("config", {
+        let task = ConfigTask {
+            warehouse: warehouse.clone(),
+            cache: config_cache.clone(),
+            every: CONFIG_REFRESH,
+        };
+        move |token| task.run(token)
     });
+    supervisor.spawn("pause", {
+        let watch = PauseWatch {
+            cache: config_cache,
+            pipeline: pipeline.clone(),
+            every: PAUSE_CHECK,
+        };
+        move |token| watch.run(token)
+    });
+    supervisor.spawn("presence", move |token| presence::run(pipeline, token));
     supervisor.spawn("uploader", {
         let uploader = Uploader {
             buffer: buffer.clone(),
