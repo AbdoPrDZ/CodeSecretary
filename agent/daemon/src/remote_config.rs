@@ -32,6 +32,7 @@ use tracing::{debug, info, warn};
 use crate::api::{ApiError, ConfigFetch, Warehouse};
 use crate::buffer::agent_source;
 use crate::pipeline::Pipeline;
+use crate::status::StatusBoard;
 
 /// Appendix-A-derived: re-fetch at least this often.
 pub const CONFIG_REFRESH: Duration = defaults::CONFIG_REFRESH;
@@ -136,6 +137,14 @@ impl ConfigTask {
         match self.warehouse.fetch_config(etag.as_deref()).await {
             Ok(ConfigFetch::NotModified) => {
                 debug!("agent config unchanged");
+                let active = self.cache.current();
+                self.warehouse.status().update(|s| {
+                    s.config.fetched_at = Some(Utc::now());
+                    s.config.path_exclusions = active.exclusions.paths.len();
+                    s.config.app_exclusions = active.exclusions.apps.len();
+                    s.config.domain_exclusions = active.exclusions.domains.len();
+                    s.config.pause_windows = active.config.pause_windows.len();
+                });
                 self.every
             }
             Ok(ConfigFetch::Changed { config, etag }) => {
@@ -146,6 +155,13 @@ impl ConfigTask {
                     active.exclusions.domains.len(),
                     config.pause_windows.len(),
                 );
+                self.warehouse.status().update(|s| {
+                    s.config.fetched_at = Some(Utc::now());
+                    s.config.path_exclusions = counts.0;
+                    s.config.app_exclusions = counts.1;
+                    s.config.domain_exclusions = counts.2;
+                    s.config.pause_windows = counts.3;
+                });
                 match self.cache.replace(config, etag) {
                     Ok(()) => info!(
                         path_exclusions = counts.0,
@@ -174,6 +190,7 @@ impl ConfigTask {
 pub struct PauseWatch {
     pub cache: Arc<ConfigCache>,
     pub pipeline: Arc<Pipeline>,
+    pub status: Arc<StatusBoard>,
     pub every: Duration,
 }
 
@@ -193,6 +210,7 @@ impl PauseWatch {
     pub fn check(&self, was: bool, now: DateTime<Utc>) -> bool {
         let local = now.with_timezone(&Local).naive_local();
         let paused = self.cache.current().config.paused_at(local).is_some();
+        self.status.update(|s| s.config.paused = paused);
         if paused != was {
             let change = AgentPauseChange {
                 reason: PauseReason::ExclusionWindow,

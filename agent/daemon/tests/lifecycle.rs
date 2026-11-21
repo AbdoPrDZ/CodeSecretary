@@ -143,3 +143,38 @@ fn sigterm_stops_gracefully() {
     assert!(log.contains("reason=\"SIGTERM\""), "log: {log}");
     assert!(log.contains("agent stopped"), "log: {log}");
 }
+
+#[test]
+fn stop_command_ends_a_running_agent() {
+    let home = tempfile::tempdir().unwrap();
+    let running = agent(home.path())
+        .args(["run", "--run-for", "60"])
+        .spawn()
+        .unwrap();
+    assert!(
+        wait_for_log(home.path(), "agent started", Duration::from_secs(10)),
+        "agent did not start"
+    );
+    let started = Instant::now();
+    let stop = agent(home.path()).arg("stop").output().unwrap();
+    assert!(stop.status.success());
+
+    let out = finish(running);
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(15),
+        "stopped in time"
+    );
+    assert!(logs(home.path()).contains("stop requested by `secretary-agent stop`"));
+    assert!(
+        !home.path().join("data").join("stop.request").exists(),
+        "request consumed"
+    );
+    // The last status write says it stopped.
+    let status = std::fs::read_to_string(home.path().join("data").join("status.json")).unwrap();
+    assert!(status.contains(r#""running": false"#), "{status}");
+}

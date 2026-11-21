@@ -19,7 +19,47 @@ use crate::paths::AgentPaths;
 use crate::state::{Account, AgentState};
 
 pub fn login(args: LoginArgs) -> ExitCode {
+    if args.json {
+        // Errors become a JSON line too, so the widget can show them.
+        return match with_runtime_result(|paths, config| async move {
+            run_login(paths, config, args).await
+        }) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(err) => {
+                emit(serde_json::json!({"event": "error", "message": format!("{err:#}")}));
+                ExitCode::from(1)
+            }
+        };
+    }
     with_runtime(|paths, config| async move { run_login(paths, config, args).await })
+}
+
+/// One machine-readable line (`login --json`). Never contains tokens.
+fn emit(value: serde_json::Value) {
+    use std::io::Write;
+    let mut out = std::io::stdout().lock();
+    let _ = writeln!(out, "{value}");
+    let _ = out.flush();
+}
+
+/// `secretary-agent stop`: drop the stop-request file a running agent watches.
+pub fn stop() -> ExitCode {
+    let result = (|| -> Result<()> {
+        let paths = AgentPaths::resolve()?;
+        paths.ensure()?;
+        std::fs::write(paths.stop_file(), b"stop\n").context("could not write the stop request")?;
+        Ok(())
+    })();
+    match result {
+        Ok(()) => {
+            println!("Stop requested; a running agent exits within a few seconds.");
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("secretary-agent: {err:#}");
+            ExitCode::from(1)
+        }
+    }
 }
 
 pub fn logout() -> ExitCode {
@@ -35,7 +75,21 @@ where
     F: FnOnce(AgentPaths, LocalConfig) -> Fut,
     Fut: std::future::Future<Output = Result<()>>,
 {
-    let result = (|| {
+    match with_runtime_result(f) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("secretary-agent: {err:#}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn with_runtime_result<F, Fut>(f: F) -> Result<()>
+where
+    F: FnOnce(AgentPaths, LocalConfig) -> Fut,
+    Fut: std::future::Future<Output = Result<()>>,
+{
+    (|| {
         let paths = AgentPaths::resolve()?;
         paths.ensure()?;
         let config = LocalConfig::load(&paths.config_file())?;
@@ -44,14 +98,7 @@ where
             .build()
             .context("could not start the async runtime")?;
         runtime.block_on(f(paths, config))
-    })();
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(err) => {
-            eprintln!("secretary-agent: {err:#}");
-            ExitCode::from(1)
-        }
-    }
+    })()
 }
 
 async fn run_login(paths: AgentPaths, config: LocalConfig, args: LoginArgs) -> Result<()> {
@@ -95,18 +142,30 @@ async fn run_login(paths: AgentPaths, config: LocalConfig, args: LoginArgs) -> R
         .verification_uri_complete
         .clone()
         .unwrap_or_else(|| code.verification_uri.clone());
-    println!(
-        "To sign in this device, open:\n\n    {}\n",
-        code.verification_uri
-    );
-    println!("and enter the code:  {}\n", code.user_code);
-    if !args.no_browser && webbrowser::open(&link).is_ok() {
-        println!("(A browser window was opened for you.)");
+    let opened = !args.no_browser && webbrowser::open(&link).is_ok();
+    if args.json {
+        emit(serde_json::json!({
+            "event": "code",
+            "verification_uri": code.verification_uri,
+            "verification_uri_complete": link,
+            "user_code": code.user_code,
+            "expires_in": code.expires_in,
+            "browser_opened": opened,
+        }));
+    } else {
+        println!(
+            "To sign in this device, open:\n\n    {}\n",
+            code.verification_uri
+        );
+        println!("and enter the code:  {}\n", code.user_code);
+        if opened {
+            println!("(A browser window was opened for you.)");
+        }
+        println!(
+            "Waiting for approval (the code expires in {} min)…",
+            code.expires_in / 60
+        );
     }
-    println!(
-        "Waiting for approval (the code expires in {} min)…",
-        code.expires_in / 60
-    );
 
     let tokens = oidc::poll_device_token(&http, &discovery, &auth.client_id, &code).await?;
     let refresh_token = tokens
@@ -133,6 +192,10 @@ async fn run_login(paths: AgentPaths, config: LocalConfig, args: LoginArgs) -> R
         .await
         .map_err(|err| anyhow::anyhow!("signed in, but registering this device failed: {err}"))?;
 
+    if args.json {
+        emit(serde_json::json!({"event": "signed_in", "email": email, "device_id": device_id}));
+        return Ok(());
+    }
     println!(
         "\nSigned in{}. This device is registered (device {device_id}).",
         email.map(|e| format!(" as {e}")).unwrap_or_default()

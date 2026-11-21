@@ -86,6 +86,11 @@ impl Uploader {
             if events.is_empty() {
                 if sent > 0 {
                     info!(sent, "events uploaded");
+                    self.warehouse.status().update(|s| {
+                        s.upload.last_upload_at = Some(chrono::Utc::now());
+                        s.upload.last_upload_events = sent as u64;
+                        s.upload.uploaded_since_start += sent as u64;
+                    });
                 }
                 return Drained::Done { sent };
             }

@@ -29,6 +29,7 @@ use crate::buffer::agent_source;
 use crate::pipeline::Pipeline;
 use crate::platform::Platform;
 use crate::probe::{Presence, classify};
+use crate::status::StatusBoard;
 
 pub const POLL_EVERY: Duration = Duration::from_secs(5);
 /// No input for this long counts as idle. The engine applies its own
@@ -72,6 +73,11 @@ impl Tracker {
             open: None,
             last_poll: None,
         }
+    }
+
+    /// The open interval: current presence and since when.
+    pub fn current(&self) -> Option<(Presence, DateTime<Utc>)> {
+        self.open
     }
 
     /// Feeds one sample; returns the intervals it completes.
@@ -156,20 +162,26 @@ impl Tracker {
 }
 
 /// Runs the collector on a blocking thread (OS handles need not be `Send`).
-pub async fn run(pipeline: Arc<Pipeline>, token: CancellationToken) -> anyhow::Result<()> {
-    let handle = tokio::task::spawn_blocking(move || collect(&pipeline, &token));
+pub async fn run(
+    pipeline: Arc<Pipeline>,
+    status: Arc<StatusBoard>,
+    token: CancellationToken,
+) -> anyhow::Result<()> {
+    let handle = tokio::task::spawn_blocking(move || collect(&pipeline, &status, &token));
     handle.await?;
     Ok(())
 }
 
-fn collect(pipeline: &Pipeline, token: &CancellationToken) {
+fn collect(pipeline: &Pipeline, status: &StatusBoard, token: &CancellationToken) {
     let mut platform = match Platform::connect() {
         Ok(platform) => platform,
         Err(err) => {
             warn!(error = %err, "presence collector unavailable on this session");
+            status.update(|s| s.presence.collector_available = false);
             return;
         }
     };
+    status.update(|s| s.presence.collector_available = true);
     info!(
         poll_s = POLL_EVERY.as_secs(),
         idle_after_s = IDLE_AFTER.as_secs(),
@@ -185,6 +197,14 @@ fn collect(pipeline: &Pipeline, token: &CancellationToken) {
                 for interval in tracker.observe(Utc::now(), idle) {
                     pipeline.submit(interval.into_event());
                 }
+                let current = tracker.current();
+                status.update(|s| {
+                    s.presence.state = current.map(|(p, _)| match p {
+                        Presence::Active => "active".to_owned(),
+                        Presence::Idle => "idle".to_owned(),
+                    });
+                    s.presence.since = current.map(|(_, since)| since);
+                });
             }
             Err(err) => {
                 let kind = err.to_string();

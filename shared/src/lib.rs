@@ -8,6 +8,7 @@
 //! - [`validate`]: envelope, timestamp, size and per-type rules (SH-4).
 //! - [`redact`]: secret masking, URL stripping, remote normalization (SH-5, SH-6).
 //! - [`config`]: `AgentConfig` (exclusions, pause windows) and the Appendix A defaults (SH-8).
+//! - [`local`]: the daemon's status file for the status panel (AG-14).
 //! - [`api`]: request/response bodies of the warehouse device API
 //!   (blueprint Appendix C).
 //!
@@ -20,6 +21,7 @@ pub mod codegen;
 pub mod config;
 pub mod event;
 pub mod ids;
+pub mod local;
 pub mod redact;
 pub mod validate;
 

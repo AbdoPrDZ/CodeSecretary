@@ -21,6 +21,8 @@ pub enum Command {
     Logout,
     /// Show sign-in state, device and how many events wait for upload.
     Status,
+    /// Ask a running agent to stop gracefully (it checks every 2 s).
+    Stop,
     /// Print the directories the agent uses for config, data and logs.
     Paths,
     /// Print idle/active state and the focused app/title live (Phase 0 prototype).
@@ -43,6 +45,11 @@ pub struct LoginArgs {
     /// Do not try to open a browser; just print the link and code.
     #[arg(long)]
     pub no_browser: bool,
+    /// Print one JSON object per line instead of text (for the CodeSecretary
+    /// widget): `{"event":"code",…}`, then `{"event":"signed_in",…}` or
+    /// `{"event":"error","message":…}`.
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Debug, Args)]

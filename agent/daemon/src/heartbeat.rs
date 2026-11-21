@@ -77,6 +77,10 @@ impl HeartbeatTask {
             Ok(response) => {
                 let offset = measure(sent, Utc::now(), response.server_time);
                 self.clock.set(offset);
+                self.warehouse.status().update(|s| {
+                    s.heartbeat.last_at = Some(Utc::now());
+                    s.heartbeat.clock_offset_ms = offset;
+                });
                 debug!(queue_depth, clock_offset_ms = offset, "heartbeat");
             }
             Err(ApiError::SignedOut) => {}

@@ -21,6 +21,7 @@ mod probe;
 mod remote_config;
 mod shutdown;
 mod state;
+mod status;
 mod supervisor;
 #[cfg(test)]
 mod upload_tests;
@@ -50,6 +51,7 @@ fn main() -> ExitCode {
         Command::Login(args) => login::login(args),
         Command::Logout => login::logout(),
         Command::Status => login::status(),
+        Command::Stop => login::stop(),
         Command::Paths => print_paths(),
         Command::Probe(args) => probe::run(args),
     }

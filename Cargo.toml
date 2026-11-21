@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["shared", "agent/daemon"]
+members = ["shared", "agent/daemon", "agent/panel"]
 
 [workspace.package]
 version = "0.1.0"
@@ -26,6 +26,8 @@ uuid = { version = "1", features = ["v4", "v7", "serde"] }
 serde_json = "1"
 secretary-shared = { path = "shared" }
 regex = "1"
+# Agent status panel (a separate process from the daemon).
+eframe = { version = "0.33.3", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
 # Contract generation (shared, feature `codegen`): JSON Schema + TypeScript.
 schemars = { version = "1", features = ["chrono04", "uuid1"] }
 ts-rs = { version = "11", features = ["chrono-impl", "uuid-impl", "serde-json-impl", "no-serde-warnings"] }

@@ -61,6 +61,17 @@ impl AgentPaths {
         self.data_dir.join("state.json")
     }
 
+    /// Written by `secretary-agent stop` (and the widget); a running agent
+    /// that sees it removes it and shuts down.
+    pub fn stop_file(&self) -> PathBuf {
+        self.data_dir.join("stop.request")
+    }
+
+    /// Status for the panel (`secretary_shared::local`), rewritten every few seconds.
+    pub fn status_file(&self) -> PathBuf {
+        self.data_dir.join(secretary_shared::local::STATUS_FILE)
+    }
+
     /// Last `AgentConfig` fetched from the warehouse, with its `ETag` (AG-7).
     pub fn agent_config_file(&self) -> PathBuf {
         self.data_dir.join("agent_config.json")

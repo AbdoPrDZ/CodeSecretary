@@ -56,6 +56,15 @@ Status: planned (Phase 2, D16). Source: blueprint §15, D16; [AGENT plan](../pla
   - its own Keycloak client `secretary-android` (auth code + PKCE)
 - **Collects only:** presence, from screen and lock events, and the foreground app as a package name, read in batches from `UsageStatsManager`. Never titles, notifications or content.
 
+## Dashboard Runtime
+
+Status: implemented (OV-1 scaffold, first slice). Source: `overview/`.
+
+- **One image** (`overview/Dockerfile`): `secretary-overview` (FastAPI) serves the built React app (`STATIC_DIR`) on `:8090`. The same origin means no CORS, and the cookie stays first-party.
+- **Database:** the API imports the warehouse's ORM models and RLS helpers, and never migrates; the warehouse does. It connects as an RLS-bound `secretary_app` member.
+- **Web** (`overview/web`, a pnpm workspace package): React 19, Vite 7, TanStack Router + Query, Tailwind 4. It uses the TypeScript contract generated from `shared/` (`src/generated/contract.ts`).
+- **Pages:** Activity (per-device day timeline of raw events), Devices, Exclusions & pause windows.
+
 ## Agent Daemon Runtime
 
 Status: implemented (AG-1 skeleton, AG-2/3/5/7; AG-4, AG-6 and AG-8 in progress). Source: `agent/daemon/src/`.
@@ -70,6 +79,8 @@ Status: implemented (AG-1 skeleton, AG-2/3/5/7; AG-4, AG-6 and AG-8 in progress)
   - `pipeline` (not a task): validate → exclusions → pause windows → redact → validate → buffer. Every collector goes through it; nothing else writes to the buffer.
   - `config`: `GET /v1/agent/config` every 5 min with the cached `ETag`.
   - `pause`: checks local time every 5 s and emits `agent.pause` / `agent.resume` at pause-window edges.
+  - `status`: writes `<data>/status.json` every 5 s, from a `StatusBoard` the other components update. The format is `secretary_shared::local`.
+- **Status panel** (`agent/panel`, `secretary-panel`): a separate egui process that only reads `status.json`, so the daemon has no local server for it.
   - `uploader`: buffer → `POST /v1/events:batch`.
   - `heartbeat`: `POST /v1/agent/heartbeat`, which also measures the clock offset.
 - **Shared state:** the uploader and heartbeat share a `Link` (sign-in state, access token) and a `ClockOffset`.
@@ -87,7 +98,7 @@ Rust (agent, engine, `shared/`; tokio, sqlx) · Python 3.13 (warehouse, overview
 
 ## Deployment Shape
 
-Local dev and self-hosting: one Compose file (Postgres, Keycloak, warehouse now; S3-compatible store (WH-6), engine and overview later). Managed hosting undecided (open decision OD2).
+Local dev and self-hosting: one Compose file (Postgres, Keycloak, warehouse, overview now; S3-compatible store (WH-6), engine and overview later). Managed hosting undecided (open decision OD2).
 
 **Single VPS (`deploy/vps/`).** Status: implemented (2026-11-20), a test deployment, not the OD2 decision.
 - **How it ships:** `deploy.py` builds the warehouse image locally and streams it over SSH into `docker load`; there is no registry. It writes `compose.yml` and a `Caddyfile` to the folder named by `DIR` in the git-ignored `.ssh.env`.

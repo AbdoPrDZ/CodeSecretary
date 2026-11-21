@@ -43,7 +43,7 @@
   - Acceptance: rejects missing token and any `Origin` header
 - [ ] AG-13 — VS Code extension v1
   - Acceptance: all Phase 1 editor events emitted; no file contents ever sent
-- [ ] AG-14 — Tray: status, today total, pause 15 min / 1 h / resume, sign out
+- [ ] AG-14 — Tray: status, today total, pause 15 min / 1 h / resume, sign out · 🚧 in progress · 2026-11-21 · `codesecretary` (agent/panel, egui): starts the daemon as a separate background process (no console), floating top-right widget (frameless, semi-transparent, draggable, on top) + tray icon colored by status with menu (show/hide, sign in/out, keep on top, open data folder, start/stop agent, close); sign-in from the widget via `secretary-agent login --json`; `secretary-agent stop` (stop-request file); daemon writes `<data>/status.json` every 5 s; verified on Windows: daemon started by the widget, widget top-right, offline state shown, stop works, ~0 CPU idle, ~120–140 MB RAM (GL driver); left: pause 15 min / 1 h, today total (needs engine + OV-14), macOS/Linux runs (Linux build needs GTK/AppIndicator dev packages)
   - Acceptance: pause stops collection immediately and emits `agent.pause`
 
 ### M5
@@ -90,3 +90,9 @@
   - **Exclusions:** an event is dropped whole if its repository root, working directory, workspace path, root + file path, or focused app matches. A leading `~` in path patterns is expanded to the home directory.
   - **Config cache:** `agent_config.json` survives `logout`, because events buffered while signed out are uploaded later and must still be filtered.
   - **Not yet driven by config:** upload, heartbeat and edit-aggregation timings are still the built-in constants (equal to the defaults), and `project_roots` is unused until AG-10.
+- 2026-11-21 (AG-14):
+  - **One program, two processes:** at the user's request, `codesecretary` is the one program to start. It runs the daemon as a separate process, so the GUI costs the daemon nothing.
+  - **Widget placement:** it always opens at the top right of the screen; the position is not restored.
+  - **egui fonts:** the default font lacks `✕` and `⋯`, so the buttons use ASCII.
+  - **Not yet tested by hand:** tray clicks while the widget is hidden, and the sign-in flow from the widget. `login --json` itself was checked from the command line.
+

@@ -26,6 +26,7 @@ use serde::de::DeserializeOwned;
 use tracing::info;
 
 use crate::auth::{Link, LinkError};
+use crate::status::StatusBoard;
 
 pub const AGENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -80,11 +81,21 @@ pub enum ConfigFetch {
 pub struct Warehouse {
     http: reqwest::Client,
     link: Arc<Link>,
+    status: Arc<StatusBoard>,
 }
 
 impl Warehouse {
     pub fn new(http: reqwest::Client, link: Arc<Link>) -> Self {
-        Self { http, link }
+        Self::with_status(http, link, Arc::new(StatusBoard::default()))
+    }
+
+    /// Reports every call's outcome to `status` (the panel's connection state).
+    pub fn with_status(http: reqwest::Client, link: Arc<Link>, status: Arc<StatusBoard>) -> Self {
+        Self { http, link, status }
+    }
+
+    pub fn status(&self) -> &Arc<StatusBoard> {
+        &self.status
     }
 
     /// `POST /v1/devices`, then remembers the device id.
@@ -155,6 +166,28 @@ impl Warehouse {
 
     /// One call with the auth retries; returns any 2xx or `304` response.
     async fn exchange(
+        &self,
+        path: &str,
+        body: &Body,
+        if_none_match: Option<&str>,
+        may_register: bool,
+    ) -> Result<reqwest::Response, ApiError> {
+        let result = self
+            .exchange_inner(path, body, if_none_match, may_register)
+            .await;
+        match &result {
+            Ok(_) => self.status.api_ok(),
+            Err(ApiError::SignedOut) => self.status.signed_out(),
+            // Outermost context only ("warehouse unreachable", "warehouse error: HTTP 503").
+            Err(ApiError::Transient(err)) => self.status.api_failed(err.to_string()),
+            Err(ApiError::Refused { status, code }) => self
+                .status
+                .api_failed(format!("refused: HTTP {} {code}", status.as_u16())),
+        }
+        result
+    }
+
+    async fn exchange_inner(
         &self,
         path: &str,
         body: &Body,

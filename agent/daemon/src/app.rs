@@ -15,6 +15,7 @@ use crate::heartbeat::{ClockOffset, HEARTBEAT_EVERY, HeartbeatTask};
 use crate::paths::AgentPaths;
 use crate::pipeline::Pipeline;
 use crate::remote_config::{CONFIG_REFRESH, ConfigCache, ConfigTask, PAUSE_CHECK, PauseWatch};
+use crate::status::{StatusBoard, StatusWriter, WRITE_EVERY};
 use crate::supervisor::{ShutdownOutcome, Supervisor};
 use crate::uploader::{UPLOAD_EVERY, Uploader};
 use crate::{presence, shutdown};
@@ -42,12 +43,23 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
         Arc::new(KeyringStore),
         http.clone(),
     ));
-    let warehouse = Arc::new(Warehouse::new(http, link));
+    let status = Arc::new(StatusBoard::default());
+    let warehouse = Arc::new(Warehouse::with_status(http, link, status.clone()));
     let clock = Arc::new(ClockOffset::default());
     let config_cache = Arc::new(ConfigCache::load(&paths.agent_config_file()));
     let pipeline = Arc::new(Pipeline::new(buffer.clone(), config_cache.clone()));
 
     let mut supervisor = Supervisor::new();
+    supervisor.spawn("status", {
+        let writer = StatusWriter {
+            board: status.clone(),
+            buffer: buffer.clone(),
+            state_file: paths.state_file(),
+            out: paths.status_file(),
+            every: WRITE_EVERY,
+        };
+        move |token| writer.run(token)
+    });
     supervisor.spawn("config", {
         let task = ConfigTask {
             warehouse: warehouse.clone(),
@@ -60,11 +72,14 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
         let watch = PauseWatch {
             cache: config_cache,
             pipeline: pipeline.clone(),
+            status: status.clone(),
             every: PAUSE_CHECK,
         };
         move |token| watch.run(token)
     });
-    supervisor.spawn("presence", move |token| presence::run(pipeline, token));
+    supervisor.spawn("presence", move |token| {
+        presence::run(pipeline, status, token)
+    });
     supervisor.spawn("uploader", {
         let uploader = Uploader {
             buffer: buffer.clone(),
@@ -84,9 +99,12 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
         move |token| task.run(token)
     });
 
+    let stop_file = paths.stop_file();
+    let _ = std::fs::remove_file(&stop_file); // a request from before this start is stale
     let reason = tokio::select! {
         signal = shutdown::wait_for_signal() => signal?,
         () = sleep_or_forever(run_for) => "run-for elapsed",
+        () = stop_requested(&stop_file) => "stop requested by `secretary-agent stop`",
     };
     info!(reason, "stop requested");
 
@@ -97,6 +115,18 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
         }
     }
     Ok(())
+}
+
+/// Resolves when the stop-request file appears (and removes it). It works the
+/// same on every OS, also for an agent started without a console.
+async fn stop_requested(path: &std::path::Path) {
+    loop {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        if path.exists() {
+            let _ = std::fs::remove_file(path);
+            return;
+        }
+    }
 }
 
 async fn sleep_or_forever(duration: Option<Duration>) {

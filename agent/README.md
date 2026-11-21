@@ -5,6 +5,7 @@ The local agent. It collects activity evidence, redacts it, buffers it, and send
 | Folder | What | Status |
 |---|---|---|
 | `daemon/` | Rust daemon `secretary-agent` | Keycloak sign-in, presence collector, pipeline with exclusions and pause windows, SQLite buffer, uploader, heartbeat, remote config (AG-1–8) |
+| `panel/` | `codesecretary`: desktop widget + tray icon; starts the daemon | Status, sign-in, start/stop (AG-14, part) |
 | `vscode/` | VS Code extension | Planned (AG-13) |
 | `browser/` | Browser extension | Phase 2 |
 | `shell/` | Shell hooks | Phase 2 |
@@ -40,6 +41,32 @@ Start the local stack first (`docker compose up -d --build --wait`; dev user `de
 5. Every event passes the pipeline before it is buffered: validation, then the user's **exclusions** (paths, apps) and **pause windows** (local time; intervals are cut at the edges, with `agent.pause` / `agent.resume` markers). The rules come from `GET /v1/agent/config`, refetched every 5 min and cached in `<data>/agent_config.json` so they also apply offline.
 
 `<data>/state.json` holds the sign-in settings and the device id, but no tokens. Linux builds need `libdbus-1-dev` and `pkg-config`.
+
+### CodeSecretary widget (AG-14)
+
+`codesecretary` (`agent/panel`) is the program to start. It:
+
+1. **Starts the daemon** (`secretary-agent run`, which must sit next to it) as a separate background process with no console window, unless one is already running. Closing the widget leaves the daemon running.
+2. **Shows a floating desktop widget.** It's a small rounded, semi-transparent card you can drag anywhere. It remembers its position and can stay on top. It shows:
+   - the status: connected, signed out, server unreachable, agent stopped
+   - the account, events waiting, the last upload, active/idle, and the rules in use
+   - a **Details** section with the server, heartbeat, clock offset and agent version
+3. **Adds a tray icon** whose dot is green, amber, red or grey with the status. Left-click shows or hides the widget. The menu has:
+   - Sign in / Sign out
+   - Keep on top
+   - Open data folder
+   - Start / Stop agent
+   - Close widget
+4. **Signs in from the widget.** **Sign in…** asks for the server URL, then runs `secretary-agent login --json`: the browser opens, and the widget shows the device code until it's approved.
+
+How they talk: the daemon rewrites `<data>/status.json` every 5 s and the widget reads it every 2 s. The file holds states, counts and times only, never event contents. The daemon runs no server for it. `secretary-agent stop` (also in the menu) asks a running daemon to exit by dropping `<data>/stop.request`, which works the same on every OS.
+
+```sh
+cargo build --release -p secretary-agent -p secretary-panel
+target/release/codesecretary          # .exe on Windows; starts the daemon too
+```
+
+Building on Linux needs `libgtk-3-dev`, `libayatana-appindicator3-dev`, `libxkbcommon-dev` and `libgl1-mesa-dev` for the window and the tray icon.
 
 ### Probe (AG-0.1)
 
