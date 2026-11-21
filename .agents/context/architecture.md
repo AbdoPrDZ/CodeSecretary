@@ -21,7 +21,7 @@ Shell hooks ─┘   collect · redact ·                    │ enqueue (user, 
 
 | Service | Does | Never does |
 |---|---|---|
-| `shared/` | Event schema, validation, redaction, config/API types (Rust crate; TS types and JSON Schema generated) | I/O, DB, HTTP |
+| `shared/` | Event schema, validation, redaction, config/API types, project mapping rule semantics (Rust crate; TS types and JSON Schema generated) | I/O, DB, HTTP |
 | `agent/` | Collect, redact, buffer (SQLite), upload; presence/focus, Git, FS collectors; hosts local API for extensions | Calculate time; talk to DB |
 | `warehouse/` | Device auth, ingest, dedupe, archive, agent config, enqueue jobs; **owns the DB schema** (Python, D15) | Calculate time; serve dashboard |
 | `orm/` | `secretary-orm`: single-database Python ORM (from J-ERP) used by the Python services | Service logic |

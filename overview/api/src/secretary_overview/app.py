@@ -20,6 +20,7 @@ import logging
 import re
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -30,7 +31,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from pydantic import BaseModel, ConfigDict, Field
 from secretary_orm import Environment
 
-from secretary_overview import __version__, sessions
+from secretary_overview import __version__, rules, sessions
 from secretary_overview.config import Config
 from secretary_overview.oidc import Oidc, SignInError
 from secretary_warehouse.db import ping, user_transaction
@@ -42,6 +43,15 @@ LOGIN_COOKIE = 'sec_login'
 MAX_DAY_EVENTS = 5000
 EXCLUSION_KINDS = ('path', 'app', 'domain', 'time_window')
 _HH_MM = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
+_COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
+_CURRENCY = re.compile(r'^[A-Z]{3}$')
+#: Days a rule preview looks back, and days re-calculated when rules change
+#: (OVERVIEW plan: "last 30 by default").
+PREVIEW_DAYS = 30
+RECALC_DAYS = 30
+#: Most distinct evidence groups a preview reads; the response says when it was cut.
+MAX_PREVIEW_GROUPS = 20000
+_ALL_EVIDENCE = [c for s in rules.SIGNALS for c in rules.EVIDENCE_COLUMNS[s]]
 
 
 class ApiError(Exception):
@@ -62,6 +72,29 @@ class NewExclusion(BaseModel):
   start: str | None = None
   end: str | None = None
   days: list[int] | None = None
+
+
+class ProjectFields(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  name: str | None = Field(default=None, min_length=1, max_length=200)
+  color: str | None = Field(default=None, max_length=16)
+  client_name: str | None = Field(default=None, max_length=200)
+  billable: bool | None = None
+  hourly_rate: Decimal | None = Field(default=None, ge=0, lt=Decimal('1e10'), decimal_places=2)
+  currency: str | None = Field(default=None, max_length=3)
+  archived: bool | None = None
+
+
+class NewRule(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  signal: str
+  pattern: str = Field(max_length=rules.MAX_PATTERN + 50)
+  priority: int = Field(default=0, ge=-100, le=100)
+
+
+class RulePreview(NewRule):
+  project_id: int | None = None
+  days: int = Field(default=PREVIEW_DAYS, ge=1, le=90)
 
 
 def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> FastAPI:
@@ -298,6 +331,180 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
       raise ApiError(404, 'not_found')
     return {'ok': True}
 
+  # -- projects and rules (OV-5, D17) --------------------------------------
+  # Personal rules (user_id = me) only for now; shared team rules are Phase 3.
+
+  @app.get('/api/projects')
+  def projects(session: sessions.Session = Depends(current)):
+    with user_transaction(db, session.user_id) as conn:
+      rows = conn.execute(
+        """SELECT id, workspace_id, name, color, client_name, billable, hourly_rate, currency,
+                  archived_at, created_at
+           FROM projects ORDER BY archived_at IS NOT NULL, lower(name), id"""
+      ).fetchall()
+      rule_rows = _rules(conn, include_archived=True)
+    by_project: dict[int, list] = {}
+    for r in rule_rows:
+      by_project.setdefault(r['project_id'], []).append(_rule(r))
+    return {'projects': [{**_project(p), 'rules': by_project.get(p['id'], [])} for p in rows]}
+
+  @app.post('/api/projects', status_code=201)
+  def add_project(body: ProjectFields, session: sessions.Session = Depends(mutating)):
+    values = _project_values(body)
+    if 'name' not in values:
+      raise ApiError(400, 'invalid_name')
+    values.pop('archived_at', None)
+    with user_transaction(db, session.user_id) as conn:
+      workspace = _personal_workspace(conn, session.user_id)
+      columns = ['workspace_id', 'created_by', *values]
+      row = conn.execute(
+        f"""INSERT INTO projects ({', '.join(columns)})
+            VALUES ({', '.join(['%s'] * len(columns))})
+            RETURNING id, workspace_id, name, color, client_name, billable, hourly_rate, currency,
+                      archived_at, created_at""",
+        [workspace, session.user_id, *values.values()],
+      ).fetchone()
+    return {**_project(row), 'rules': []}
+
+  @app.patch('/api/projects/{project_id}')
+  def edit_project(project_id: int, body: ProjectFields, session: sessions.Session = Depends(mutating)):
+    values = _project_values(body)
+    if not values:
+      raise ApiError(400, 'invalid_body')
+    with user_transaction(db, session.user_id) as conn:
+      sets = ', '.join(f'{c} = %s' for c in values)
+      row = conn.execute(
+        f'UPDATE projects SET {sets}, updated_at = now() WHERE id = %s RETURNING id',
+        [*values.values(), project_id],
+      ).fetchone()
+      if row is None:
+        raise ApiError(404, 'not_found')
+      if 'archived_at' in values:
+        _enqueue_recalc(conn, session.user_id, 'rules_changed')
+    return {'ok': True}
+
+  @app.delete('/api/projects/{project_id}')
+  def delete_project(project_id: int, session: sessions.Session = Depends(mutating)):
+    with user_transaction(db, session.user_id) as conn:
+      row = conn.execute('DELETE FROM projects WHERE id = %s RETURNING id', [project_id]).fetchone()
+      if row is None:
+        raise ApiError(404, 'not_found')
+      _enqueue_recalc(conn, session.user_id, 'rules_changed')
+    return {'ok': True}
+
+  @app.post('/api/projects/{project_id}/rules', status_code=201)
+  def add_rule(project_id: int, body: NewRule, session: sessions.Session = Depends(mutating)):
+    signal, pattern = _checked_rule(body)
+    with user_transaction(db, session.user_id) as conn:
+      project = conn.execute('SELECT id, workspace_id FROM projects WHERE id = %s',
+                             [project_id]).fetchone()
+      if project is None:
+        raise ApiError(404, 'not_found')
+      duplicate = conn.execute(
+        """SELECT 1 FROM project_mappings
+           WHERE user_id = %s AND project_id = %s AND signal = %s AND pattern = %s""",
+        [session.user_id, project_id, signal, pattern],
+      ).fetchone()
+      if duplicate:
+        raise ApiError(409, 'duplicate_rule')
+      row = conn.execute(
+        """INSERT INTO project_mappings (workspace_id, project_id, user_id, signal, pattern, priority,
+                                         created_by)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)
+           RETURNING id, project_id, user_id, signal, pattern, priority, created_at""",
+        [project['workspace_id'], project_id, session.user_id, signal, pattern, body.priority,
+         session.user_id],
+      ).fetchone()
+      _enqueue_recalc(conn, session.user_id, 'rules_changed')
+    return _rule(row)
+
+  @app.delete('/api/rules/{rule_id}')
+  def delete_rule(rule_id: int, session: sessions.Session = Depends(mutating)):
+    with user_transaction(db, session.user_id) as conn:
+      row = conn.execute('DELETE FROM project_mappings WHERE id = %s AND user_id = %s RETURNING id',
+                         [rule_id, session.user_id]).fetchone()
+      if row is None:
+        raise ApiError(404, 'not_found')
+      _enqueue_recalc(conn, session.user_id, 'rules_changed')
+    return {'ok': True}
+
+  @app.post('/api/rules/preview')
+  def preview_rule(body: RulePreview, session: sessions.Session = Depends(mutating)):
+    """What a rule would match in the user's recent events, before it is saved.
+
+    Counts events (not time: only the engine computes time), lists the matched
+    values, and names other projects whose rules match the same events.
+    """
+
+    signal, pattern = _checked_rule(body)
+    since = datetime.now(UTC) - timedelta(days=body.days)
+    own = rules.EVIDENCE_COLUMNS[signal]
+    with user_transaction(db, session.user_id) as conn:
+      groups = conn.execute(
+        f"""SELECT {', '.join(f'{c} AS c{i}' for i, c in enumerate(_ALL_EVIDENCE))},
+                   count(*) AS events, max(server_adjusted_start) AS last_seen
+            FROM activity_events
+            WHERE timestamp_start >= %(since)s
+              AND ({' OR '.join(f'{c} IS NOT NULL' for c in own)})
+            GROUP BY {', '.join(str(i + 1) for i in range(len(_ALL_EVIDENCE)))}
+            ORDER BY events DESC
+            LIMIT %(limit)s""",
+        {'since': since, 'limit': MAX_PREVIEW_GROUPS + 1},
+      ).fetchall()
+      others = [r for r in _rules(conn) if r['project_id'] != body.project_id]
+      names = {p['id']: p['name'] for p in conn.execute('SELECT id, name FROM projects').fetchall()}
+    truncated = len(groups) > MAX_PREVIEW_GROUPS
+    matched, examples, conflicts = 0, {}, {}
+    for group in groups[:MAX_PREVIEW_GROUPS]:
+      evidence = _evidence(group)
+      hits = [v for v in evidence[signal] if rules.matches_value(signal, pattern, v)]
+      if not hits:
+        continue
+      matched += group['events']
+      for value in dict.fromkeys(hits):
+        example = examples.setdefault(value, {'value': value, 'events': 0, 'last_seen': None})
+        example['events'] += group['events']
+        example['last_seen'] = max(filter(None, (example['last_seen'], group['last_seen'])))
+      winner = rules.resolve(others, evidence)
+      if winner is not None:
+        conflicts[winner['project_id']] = conflicts.get(winner['project_id'], 0) + group['events']
+    top = sorted(examples.values(), key=lambda e: (-e['events'], e['value']))[:10]
+    return {
+      'signal': signal,
+      'pattern': pattern,
+      'days': body.days,
+      'matched_events': matched,
+      'examples': [{**e, 'last_seen': _iso(e['last_seen'])} for e in top],
+      'distinct_values': len(examples),
+      'conflicts': [{'project_id': pid, 'name': names.get(pid), 'events': n}
+                    for pid, n in sorted(conflicts.items(), key=lambda kv: -kv[1])],
+      'truncated': truncated,
+    }
+
+  @app.get('/api/rules/suggestions')
+  def rule_suggestions(session: sessions.Session = Depends(current)):
+    """Detected repositories no rule covers yet: optional one-click projects (D17)."""
+
+    since = datetime.now(UTC) - timedelta(days=PREVIEW_DAYS)
+    with user_transaction(db, session.user_id) as conn:
+      repos = conn.execute(
+        """SELECT repository_remote AS remote, min(repository_root) AS root, count(*) AS events,
+                  max(server_adjusted_start) AS last_seen
+           FROM activity_events
+           WHERE timestamp_start >= %s AND repository_remote IS NOT NULL
+           GROUP BY repository_remote ORDER BY events DESC LIMIT 200""",
+        [since],
+      ).fetchall()
+      existing = _rules(conn)
+    out = []
+    for repo in repos:
+      evidence = {'remote': [repo['remote']], 'path': [repo['root']] if repo['root'] else []}
+      if rules.resolve(existing, evidence) is None:
+        name = repo['remote'].rsplit('/', 1)[-1]
+        out.append({'remote': repo['remote'], 'root': repo['root'], 'name': name,
+                    'events': repo['events'], 'last_seen': _iso(repo['last_seen'])})
+    return {'repositories': out[:20]}
+
   @app.api_route('/api/{rest:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
   def api_not_found(rest: str):
     raise ApiError(404, 'not_found')
@@ -350,5 +557,121 @@ def _exclusion(row: dict) -> dict:
     'start': _iso(row['window_start']),
     'end': _iso(row['window_end']),
     'days': days if isinstance(days, list) else [],
+    'created_at': _iso(row['created_at']),
+  }
+
+
+# -- projects and rules helpers ---------------------------------------------
+
+def _personal_workspace(conn, user_id: int) -> int:
+  row = conn.execute('SELECT id FROM workspaces WHERE personal_owner_id = %s', [user_id]).fetchone()
+  if row is None:
+    raise ApiError(409, 'no_workspace')
+  return row['id']
+
+
+def _project_values(body: ProjectFields) -> dict:
+  """The columns a create/edit body sets, validated."""
+
+  values: dict = {}
+  given = body.model_fields_set
+  if 'name' in given:
+    name = (body.name or '').strip()
+    if not name:
+      raise ApiError(400, 'invalid_name')
+    values['name'] = name
+  if 'color' in given:
+    if body.color and not _COLOR.match(body.color):
+      raise ApiError(400, 'invalid_color')
+    values['color'] = body.color or None
+  if 'client_name' in given:
+    values['client_name'] = (body.client_name or '').strip() or None
+  if 'billable' in given and body.billable is not None:
+    values['billable'] = body.billable
+  if 'hourly_rate' in given:
+    values['hourly_rate'] = body.hourly_rate
+  if 'currency' in given:
+    currency = (body.currency or '').strip().upper()
+    if currency and not _CURRENCY.match(currency):
+      raise ApiError(400, 'invalid_currency')
+    values['currency'] = currency or None
+  if 'archived' in given and body.archived is not None:
+    values['archived_at'] = datetime.now(UTC) if body.archived else None
+  return values
+
+
+def _checked_rule(body: NewRule) -> tuple[str, str]:
+  if body.signal not in rules.SIGNALS:
+    raise ApiError(400, 'invalid_signal')
+  pattern = rules.normalize_pattern(body.signal, body.pattern)
+  if pattern is None:
+    raise ApiError(400, 'invalid_pattern')
+  return body.signal, pattern
+
+
+def _rules(conn, include_archived: bool = False) -> list[dict]:
+  """The user's own rules (RLS also hides others'); archived projects' rules
+  are inactive, so matching leaves them out."""
+
+  archived = '' if include_archived else 'AND p.archived_at IS NULL'
+  return conn.execute(
+    f"""SELECT m.id, m.project_id, m.user_id, m.signal, m.pattern, m.priority, m.created_at
+        FROM project_mappings m JOIN projects p ON p.id = m.project_id
+        WHERE m.user_id = app_current_user_id() {archived}
+        ORDER BY m.project_id, m.id"""
+  ).fetchall()
+
+
+def _evidence(group: dict) -> dict[str, list[str]]:
+  out, i = {}, 0
+  for signal in rules.SIGNALS:
+    n = len(rules.EVIDENCE_COLUMNS[signal])
+    out[signal] = rules.evidence_values(signal, tuple(group[f'c{j}'] for j in range(i, i + n)))
+    i += n
+  return out
+
+
+def _enqueue_recalc(conn, user_id: int, reason: str) -> None:
+  """Queue the engine for the user's last RECALC_DAYS local days (one job per day)."""
+
+  row = conn.execute('SELECT time_zone FROM users WHERE id = %s', [user_id]).fetchone()
+  try:
+    zone = ZoneInfo((row or {}).get('time_zone') or 'UTC')
+  except ZoneInfoNotFoundError:
+    zone = ZoneInfo('UTC')
+  today = datetime.now(zone).date()
+  conn.execute(
+    """INSERT INTO processing_jobs (user_id, local_day, reason, status, run_after, attempts)
+       SELECT %s, d::date, %s, 'queued', now(), 0
+       FROM generate_series(%s::date, %s::date, interval '1 day') AS d
+       ON CONFLICT (user_id, local_day) WHERE status = 'queued' DO NOTHING""",
+    [user_id, reason, today - timedelta(days=RECALC_DAYS - 1), today],
+  )
+
+
+def _project(row: dict) -> dict:
+  rate = row['hourly_rate']
+  return {
+    'id': row['id'],
+    'workspace_id': row['workspace_id'],
+    'name': row['name'],
+    'color': row['color'],
+    'client_name': row['client_name'],
+    'billable': row['billable'],
+    'hourly_rate': None if rate is None else f'{rate:.2f}',
+    'currency': row['currency'],
+    'archived_at': _iso(row['archived_at']),
+    'created_at': _iso(row['created_at']),
+  }
+
+
+def _rule(row: dict) -> dict:
+  return {
+    'id': row['id'],
+    'project_id': row['project_id'],
+    'signal': row['signal'],
+    'pattern': row['pattern'],
+    'priority': row['priority'],
+    'shared': row['user_id'] is None,
     'created_at': _iso(row['created_at']),
   }

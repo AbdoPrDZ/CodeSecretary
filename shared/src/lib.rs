@@ -8,6 +8,7 @@
 //! - [`validate`]: envelope, timestamp, size and per-type rules (SH-4).
 //! - [`redact`]: secret masking, URL stripping, remote normalization (SH-5, SH-6).
 //! - [`config`]: `AgentConfig` (exclusions, pause windows) and the Appendix A defaults (SH-8).
+//! - [`rules`]: project mapping rules: pattern normalization, matching, resolution (D17).
 //! - [`local`]: the daemon's status file for the status panel (AG-14).
 //! - [`api`]: request/response bodies of the warehouse device API
 //!   (blueprint Appendix C).
@@ -23,6 +24,7 @@ pub mod event;
 pub mod ids;
 pub mod local;
 pub mod redact;
+pub mod rules;
 pub mod validate;
 
 pub use event::{Event, Payload, RepositoryRef, SCHEMA_VERSION, Source};

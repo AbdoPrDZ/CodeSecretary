@@ -6,6 +6,9 @@ import { createRoot } from 'react-dom/client';
 import { ApiError } from './api';
 import './index.css';
 import { router } from './router';
+import { applyTheme } from './theme';
+
+applyTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {

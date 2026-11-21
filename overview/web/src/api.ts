@@ -54,6 +54,61 @@ export interface Exclusion {
   created_at: string;
 }
 
+export type RuleSignal = 'path' | 'remote' | 'domain' | 'app' | 'title';
+
+export interface Rule {
+  id: number;
+  project_id: number;
+  signal: RuleSignal;
+  pattern: string;
+  priority: number;
+  shared: boolean;
+  created_at: string;
+}
+
+export interface Project {
+  id: number;
+  workspace_id: number;
+  name: string;
+  color: string | null;
+  client_name: string | null;
+  billable: boolean;
+  hourly_rate: string | null;
+  currency: string | null;
+  archived_at: string | null;
+  created_at: string;
+  rules: Rule[];
+}
+
+export interface ProjectFields {
+  name?: string;
+  color?: string | null;
+  client_name?: string | null;
+  billable?: boolean;
+  hourly_rate?: number | null;
+  currency?: string | null;
+  archived?: boolean;
+}
+
+export interface RulePreview {
+  signal: RuleSignal;
+  pattern: string;
+  days: number;
+  matched_events: number;
+  distinct_values: number;
+  examples: { value: string; events: number; last_seen: string | null }[];
+  conflicts: { project_id: number; name: string | null; events: number }[];
+  truncated: boolean;
+}
+
+export interface RepositorySuggestion {
+  remote: string;
+  root: string | null;
+  name: string;
+  events: number;
+  last_seen: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -101,6 +156,17 @@ export const api = {
   exclusions: () => request<{ exclusions: Exclusion[] }>('GET', '/api/exclusions').then((r) => r.exclusions),
   addExclusion: (body: Partial<Exclusion>) => request<Exclusion>('POST', '/api/exclusions', body),
   deleteExclusion: (id: number) => request('DELETE', `/api/exclusions/${id}`),
+  projects: () => request<{ projects: Project[] }>('GET', '/api/projects').then((r) => r.projects),
+  addProject: (body: ProjectFields) => request<Project>('POST', '/api/projects', body),
+  editProject: (id: number, body: ProjectFields) => request('PATCH', `/api/projects/${id}`, body),
+  deleteProject: (id: number) => request('DELETE', `/api/projects/${id}`),
+  addRule: (projectId: number, body: { signal: RuleSignal; pattern: string; priority?: number }) =>
+    request<Rule>('POST', `/api/projects/${projectId}/rules`, body),
+  deleteRule: (id: number) => request('DELETE', `/api/rules/${id}`),
+  previewRule: (body: { signal: RuleSignal; pattern: string; project_id?: number }) =>
+    request<RulePreview>('POST', '/api/rules/preview', body),
+  suggestions: () =>
+    request<{ repositories: RepositorySuggestion[] }>('GET', '/api/rules/suggestions').then((r) => r.repositories),
   async logout(): Promise<void> {
     const { logout_url } = await request<{ logout_url: string }>('POST', '/auth/logout');
     window.location.assign(logout_url);

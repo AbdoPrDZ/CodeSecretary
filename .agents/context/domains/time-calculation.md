@@ -17,6 +17,8 @@ Turn raw activity events into project **assignments** and **work sessions** that
 
 ## Correlation Order
 
+Mapping rules (D17) are made by the user per project; semantics in `shared/src/rules.rs` (signals `path`, `remote`, `domain`, `app`, `title`; among matching rules the highest priority, then the longest pattern, then the oldest wins). Archived projects' rules are inactive.
+
 User override → personal rule → shared (team) rule → structural (repo/workspace/cwd) → temporal context → AI (Phase 2, confidence ≤ 0.8) → unassigned (inbox). Below the review threshold → inbox even if assigned.
 
 ## Calculation Steps

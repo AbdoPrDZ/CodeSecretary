@@ -1,7 +1,8 @@
 # CodeSecretary Overview (dashboard)
 
-The user-facing part: sign in, see your devices and raw activity, manage
-exclusions and pause windows. Later: projects, sessions, corrections, reports,
+The user-facing part: sign in, see your devices and raw activity, create
+projects and the rules that bind activity to them (with a match preview),
+manage exclusions and pause windows. Later: sessions, corrections, reports,
 teams. It never computes time; that is the engine's job.
 
 | Folder | What |
@@ -42,6 +43,10 @@ Session cookie (`sec_session`, HTTP-only) from `/auth/login` → Keycloak →
 | `GET /api/me` | Email, time zone, CSRF token |
 | `GET /api/devices`, `PATCH /api/devices/{id}`, `POST /api/devices/{id}/revoke` | Devices; a revoked device is refused by the warehouse within a minute |
 | `GET /api/activity?day=YYYY-MM-DD&tz=Area/City` | Raw events of a local day (at most 5,000), no totals |
+| `GET/POST /api/projects`, `PATCH/DELETE /api/projects/{id}` | Projects (name, client, billable, hourly rate, currency, color, archived) with their rules |
+| `POST /api/projects/{id}/rules`, `DELETE /api/rules/{id}` | Personal mapping rules (`path`, `remote`, `domain`, `app`, `title`); patterns are normalized; changes queue the engine for the last 30 days |
+| `POST /api/rules/preview` | What a rule would match in the last 30 days (event counts, matched values, other projects whose rules match the same events); saves nothing |
+| `GET /api/rules/suggestions` | Detected repositories no rule covers (optional one-click projects) |
 | `GET/POST /api/exclusions`, `DELETE /api/exclusions/{id}` | Exclusions (`path`, `app`, `domain`) and pause windows (`time_window`); agents pick them up within 5 min |
 
 Configuration is in [api/src/secretary_overview/config.py](api/src/secretary_overview/config.py).

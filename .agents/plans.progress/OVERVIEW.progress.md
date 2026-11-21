@@ -23,7 +23,7 @@
   - Acceptance: sign in/out; session fixation & CSRF tests
 - [x] OV-3 — Personal workspace on first sign-in; RLS context per request · 2026-11-20 · `app_resolve_identity()` on callback provisions user + personal workspace; every request runs in `user_transaction(session.user_id)`; isolation test: user B sees none of A's devices, events, exclusions and cannot rename/revoke/delete them (404)
   - Acceptance: isolation tests pass
-- [ ] OV-5 — Projects, mappings, exclusions, pause windows CRUD (+ config ETag bump) · 🚧 in progress · 2026-11-20 · exclusions (folder/app/website) and pause windows: list/add/remove with validation; the agent config (ETag = body hash) changes with them, tested via `agent_config.build`; left: projects and mappings
+- [ ] OV-5 — Projects, mappings, exclusions, pause windows CRUD (+ config ETag bump) · 🚧 in progress · 2026-11-20 · exclusions (folder/app/website) and pause windows: list/add/remove with validation; the agent config (ETag = body hash) changes with them, tested via `agent_config.build`. 2026-11-21: projects (create, edit, archive, delete) and personal rules with normalization, match preview (event counts, values, conflicts) and detected-repository suggestions; rule changes queue recalculation of 30 days; 5 API tests + shared fixture tests (Rust and Python). Left: a manual UI pass in the browser
   - Acceptance: agent picks up changes within 5 min
 - [ ] OV-6 — Onboarding: create projects and rules (D17); detected repos offered as optional suggestions; trigger backfill
   - Acceptance: new user reaches Today with data in < 10 min
@@ -91,7 +91,7 @@
 
 ## Notes
 - 2026-11-20: First dashboard slice, chosen by the user: sign-in, devices, raw activity and exclusions/pause windows, local first, then the VPS.
-  - **OV-5:** exclusions and pause windows only; projects and mappings come later.
+  - **OV-5:** exclusions and pause windows first; projects and rules added 2026-11-21.
   - **OV-12:** the data view only.
   - **Activity page:** raw events only, with no totals, because only the engine computes time.
 - 2026-11-20:
@@ -99,3 +99,5 @@
   - **Database login:** dev Compose reuses the `secretary_warehouse` login for the dashboard. A separate `secretary_overview` login belongs to the hardening work.
   - **Generated types:** the TypeScript contract is generated into `overview/web/src/generated/` as well (SH-9).
 - 2026-11-21: Decision D17 (user): projects are created by the user and bound to evidence by rules; detected repositories are optional suggestions. OV-5 now includes a match preview for rules; OV-6 rescoped accordingly.
+- 2026-11-21: OV-5 rules: one semantics in `shared/src/rules.rs` (for the engine) with a Python copy in `overview/api` for the preview, both checked by `shared/fixtures/rule-match-v1.json`. Defaults taken (no answer yet, easy to change): rule changes recalculate the last 30 days; unmatched activity goes to the review inbox (D17). Website rules match nothing until the browser extension (Phase 2) sends domains.
+- 2026-11-21: Dashboard redesign (user request): design system in `overview/web/src/components/ui.tsx` (buttons, inputs, cards, badges, stats, dialogs, drawers) and inline SVG icons (`icons.tsx`, no icon package); sidebar shell with a mobile drawer; light/dark/system theme (class on `<html>`, choice in localStorage); self-hosted Inter (`@fontsource-variable/inter` 5.3.0, CSP allows only self). All four pages rebuilt. Checked by screenshots in headless Edge (light, dark, 390 px). Time is still not summed anywhere in the web app.

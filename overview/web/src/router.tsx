@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { ActivityPage } from './pages/Activity';
 import { DevicesPage } from './pages/Devices';
 import { ExclusionsPage } from './pages/Exclusions';
+import { ProjectsPage } from './pages/Projects';
 import { isoDay } from './timeline';
 
 const rootRoute = createRootRoute({ component: Layout });
@@ -32,8 +33,10 @@ const exclusionsRoute = createRoute({
   component: ExclusionsPage,
 });
 
+const projectsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/projects', component: ProjectsPage });
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, activityRoute, devicesRoute, exclusionsRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
   defaultPreload: 'intent',
 });
 

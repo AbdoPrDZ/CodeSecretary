@@ -162,19 +162,7 @@ impl Exclusions {
     }
 
     pub fn excludes_domain(&self, domain: &str) -> bool {
-        let domain = domain.trim().trim_end_matches('.').to_ascii_lowercase();
-        self.domains.iter().any(|d| {
-            let d = d
-                .trim()
-                .trim_start_matches("*.")
-                .trim_end_matches('.')
-                .to_ascii_lowercase();
-            !d.is_empty()
-                && (domain == d
-                    || domain
-                        .strip_suffix(&d)
-                        .is_some_and(|prefix| prefix.ends_with('.')))
-        })
+        self.domains.iter().any(|d| domain_matches(d, domain))
     }
 }
 
@@ -235,7 +223,22 @@ mod hh_mm {
     }
 }
 
-fn normalize_path(path: &str) -> String {
+/// `domain` is `pattern` or one of its subdomains (`*.` prefix optional).
+pub(crate) fn domain_matches(pattern: &str, domain: &str) -> bool {
+    let domain = domain.trim().trim_end_matches('.').to_ascii_lowercase();
+    let d = pattern
+        .trim()
+        .trim_start_matches("*.")
+        .trim_end_matches('.')
+        .to_ascii_lowercase();
+    !d.is_empty()
+        && (domain == d
+            || domain
+                .strip_suffix(&d)
+                .is_some_and(|prefix| prefix.ends_with('.')))
+}
+
+pub(crate) fn normalize_path(path: &str) -> String {
     let mut p = path.trim().replace('\\', "/").to_lowercase();
     while p.len() > 1 && p.ends_with('/') {
         p.pop();
@@ -243,13 +246,13 @@ fn normalize_path(path: &str) -> String {
     p
 }
 
-fn app_name(app: &str) -> String {
+pub(crate) fn app_name(app: &str) -> String {
     let name = app.trim().replace('\\', "/");
     let name = name.rsplit('/').next().unwrap_or_default().to_lowercase();
     name.strip_suffix(".exe").map(str::to_owned).unwrap_or(name)
 }
 
-fn path_matches(pattern: &str, path: &str) -> bool {
+pub(crate) fn path_matches(pattern: &str, path: &str) -> bool {
     if pattern.is_empty() {
         return false;
     }
@@ -277,7 +280,7 @@ fn glob_segments(pattern: &[&str], path: &[&str]) -> bool {
 }
 
 /// `*` and `?` within one path segment.
-fn glob_one(pattern: &str, text: &str) -> bool {
+pub(crate) fn glob_one(pattern: &str, text: &str) -> bool {
     let p: Vec<char> = pattern.chars().collect();
     let t: Vec<char> = text.chars().collect();
     let (mut pi, mut ti, mut star, mut mark) = (0, 0, None, 0);

@@ -1,0 +1,41 @@
+{
+  "_comment": "Project mapping rule semantics (D17). Checked by shared/src/rules.rs and overview/api tests (the dashboard preview). Add cases here, never only in one language.",
+  "normalize": [
+    {"signal": "path", "pattern": "  C:\\work\\acme\\ ", "expected": "C:/work/acme"},
+    {"signal": "path", "pattern": "/", "expected": "/"},
+    {"signal": "path", "pattern": "   ", "expected": null},
+    {"signal": "remote", "pattern": "https://user:tok@GitHub.com:443/Acme/API.git", "expected": "github.com/acme/api"},
+    {"signal": "remote", "pattern": "git@github.com:acme/api.git", "expected": "github.com/acme/api"},
+    {"signal": "remote", "pattern": "github.com/acme/*", "expected": "github.com/acme/*"},
+    {"signal": "remote", "pattern": "ssh://git@gitlab.example.com/group/sub/repo/", "expected": "gitlab.example.com/group/sub/repo"},
+    {"signal": "remote", "pattern": "https://", "expected": null},
+    {"signal": "domain", "pattern": "https://Docs.Acme.com/path?q=1", "expected": "docs.acme.com"},
+    {"signal": "domain", "pattern": "*.acme.com", "expected": "acme.com"},
+    {"signal": "domain", "pattern": "acme.com:8080", "expected": "acme.com"},
+    {"signal": "app", "pattern": " Code.exe ", "expected": "Code.exe"},
+    {"signal": "title", "pattern": " Invoice ", "expected": "Invoice"}
+  ],
+  "match": [
+    {"signal": "path", "pattern": "C:\\work\\acme", "value": "c:/work/acme", "matches": true},
+    {"signal": "path", "pattern": "C:\\work\\acme", "value": "C:\\Work\\Acme\\api\\src", "matches": true},
+    {"signal": "path", "pattern": "C:\\work\\acme", "value": "C:\\work\\acme-old", "matches": false},
+    {"signal": "path", "pattern": "/home/me/*/client-x", "value": "/home/me/code/client-x/app", "matches": true},
+    {"signal": "path", "pattern": "/home/me/*/client-x", "value": "/home/me/a/b/client-x", "matches": false},
+    {"signal": "path", "pattern": "/home/**/client-x", "value": "/home/me/a/b/client-x", "matches": true},
+    {"signal": "path", "pattern": "/home/me/proj-??", "value": "/home/me/proj-42/x", "matches": true},
+    {"signal": "remote", "pattern": "github.com/acme", "value": "github.com/acme/api", "matches": true},
+    {"signal": "remote", "pattern": "github.com/acme", "value": "github.com/acme-labs/api", "matches": false},
+    {"signal": "remote", "pattern": "git@github.com:acme/api.git", "value": "github.com/Acme/API", "matches": true},
+    {"signal": "remote", "pattern": "github.com/*/api", "value": "github.com/acme/api", "matches": true},
+    {"signal": "domain", "pattern": "acme.com", "value": "acme.com", "matches": true},
+    {"signal": "domain", "pattern": "acme.com", "value": "jira.acme.com", "matches": true},
+    {"signal": "domain", "pattern": "acme.com", "value": "notacme.com", "matches": false},
+    {"signal": "app", "pattern": "code", "value": "Code.exe", "matches": true},
+    {"signal": "app", "pattern": "Code.exe", "value": "C:\\Program Files\\VS Code\\code.exe", "matches": true},
+    {"signal": "app", "pattern": "code", "value": "codex.exe", "matches": false},
+    {"signal": "title", "pattern": "acme", "value": "Issue 12 - ACME Portal - Google Chrome", "matches": true},
+    {"signal": "title", "pattern": "acme", "value": "Inbox - Gmail", "matches": false},
+    {"signal": "title", "pattern": "*- Client X", "value": "plan.docx - Client X", "matches": true},
+    {"signal": "title", "pattern": "*- Client X", "value": "plan.docx - Client X - Word", "matches": false}
+  ]
+}

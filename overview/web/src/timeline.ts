@@ -57,15 +57,20 @@ export function shiftDay(day: string, days: number): string {
 }
 
 export const EVENT_STYLE: Record<string, { label: string; className: string }> = {
-  'presence.active': { label: 'Active', className: 'bg-emerald-500' },
-  'presence.idle': { label: 'Idle', className: 'bg-slate-300 dark:bg-slate-600' },
+  'presence.active': { label: 'Active', className: 'bg-emerald-500/85' },
+  'presence.idle': { label: 'Idle', className: 'bg-zinc-300 dark:bg-zinc-600' },
   'window.focus': { label: 'Window', className: 'bg-sky-500' },
+  'editor.workspace_open': { label: 'Workspace', className: 'bg-violet-400' },
   'editor.file_focus': { label: 'Editor', className: 'bg-violet-500' },
-  'editor.edit_burst': { label: 'Edits', className: 'bg-violet-600' },
-  'agent.pause': { label: 'Paused', className: 'bg-amber-500' },
-  'agent.resume': { label: 'Resumed', className: 'bg-amber-300' },
+  'editor.edit_burst': { label: 'Edits', className: 'bg-fuchsia-500' },
+  'editor.save': { label: 'Save', className: 'bg-fuchsia-600' },
+  'git.commit': { label: 'Commit', className: 'bg-orange-500' },
+  'git.checkout': { label: 'Checkout', className: 'bg-amber-500' },
+  'git.merge': { label: 'Merge', className: 'bg-orange-600' },
+  'agent.pause': { label: 'Paused', className: 'bg-rose-400' },
+  'agent.resume': { label: 'Resumed', className: 'bg-rose-300' },
 };
 
 export function styleOf(type: string) {
-  return EVENT_STYLE[type] ?? { label: type, className: 'bg-indigo-400' };
+  return EVENT_STYLE[type] ?? { label: type, className: 'bg-brand-400' };
 }
