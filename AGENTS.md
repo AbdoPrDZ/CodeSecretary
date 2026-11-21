@@ -2,7 +2,7 @@
 
 **CodeSecretary** automatically tracks developer work time per project. A local agent collects redacted activity evidence (presence, editor, Git, terminal, browser) and uploads it to a cloud platform that deterministically reconstructs work sessions, lets users correct them, and (later) shares submitted time with teams — without surveillance.
 
-**Stage:** early implementation (M1). Exists: the Cargo workspace (`shared`, agent), the `shared/` contract crate (event envelope, Phase 1 catalog, device API types), the agent daemon (Keycloak device login, presence collector, SQLite buffer, uploader, heartbeat), the `orm/` package, the Python warehouse (ORM-owned schema with RLS, Keycloak token validation, device registration, batch ingest, heartbeat), Keycloak + Postgres in Docker Compose, and CI. Engine and overview are not started.
+**Stage:** early implementation (M1). Exists: the Cargo workspace (`shared`, agent), the `shared/` contract crate (event envelope, Phase 1 catalog, device API types), the agent daemon (Keycloak device login, presence collector, SQLite buffer, uploader, heartbeat), the `orm/` package, the Python warehouse (ORM-owned schema with RLS, Keycloak token validation, device registration, batch ingest, heartbeat), Keycloak + Postgres in Docker Compose, and CI. The overview dashboard has its first slice (Keycloak sign-in, devices, raw activity timeline, exclusions and pause windows); a single-VPS deployment exists (`deploy/vps/`). The engine is not started.
 
 ## Start Here
 
@@ -29,7 +29,7 @@
 | `warehouse/` | Device auth, ingest API, storage, **the DB schema for every service** (Python, D15) |
 | `engine/` | Correlation + time calculation (the only place time is computed) |
 | `overview/` | User API + React dashboard |
-| `orm/` | `secretary-orm`: single-database Python ORM extracted from J-ERP; used by the warehouse (and later the overview API) |
+| `orm/` | `secretary-orm`: single-database Python ORM extracted from J-ERP; used by the warehouse and the overview API |
 
 ## Non-Negotiable Rules
 
@@ -93,3 +93,11 @@ Full conventions: [.agents/context/conventions.md](.agents/context/conventions.m
 - Default branch `main`. Work on branches named `<service>/<TASK-ID>-short-name` (e.g., `engine/EN-7-overlap`).
 - Commit messages: `<service>: <summary> (<TASK-ID>)`.
 - Commit or push only when the user asks.
+
+## Approach
+- Read existing files before writing. Don't re-read unless changed.
+- Thorough in reasoning, concise in output.
+- Skip files over 100KB unless required.
+- No sycophantic openers or closing fluff.
+- No emojis or em-dashes.
+- Do not guess APIs, versions, flags, commit SHAs, or package names. Verify by reading code or docs before asserting.

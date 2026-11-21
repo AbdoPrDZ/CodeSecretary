@@ -1,6 +1,6 @@
 # APIs
 
-Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
+Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); user API partly implemented (sign-in, devices, activity, exclusions); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `overview/api/src/secretary_overview/`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
 
 ## Surfaces
 
@@ -34,6 +34,22 @@ Status: implemented (WH-4, WH-5, WH-8, WH-9). Source: `warehouse/src/secretary_w
   - TypeScript types: `shared/bindings/ts/contract.ts`.
   - Regenerate after any contract change: `SECRETARY_BLESS=1 cargo test -p secretary-shared --features codegen generated`.
   - **Still by hand:** the semantic rules of `validate.rs` (timestamps, sizes, paths, hashes) are re-implemented in `ingest.py`. Change both together.
+
+## User API Behaviour
+
+Status: implemented for the first slice (OV-1–5, OV-12 data view). Source: `overview/api/src/secretary_overview/`; route list in `overview/README.md`.
+
+- **Sign-in:** `/auth/login` → Keycloak (confidential `secretary-dashboard`, auth code + PKCE) → `/auth/callback`.
+  - State, nonce and the PKCE verifier sit in a 10-minute HMAC-signed cookie.
+  - The ID token is checked: issuer, audience, nonce, RS256 via JWKS.
+  - `email` is required.
+- **Keycloak URLs:** browser-facing ones use the public issuer; the token exchange and keys use `KEYCLOAK_INTERNAL_URL`.
+- **Sessions:** server-side in `web_sessions` (token SHA-256 only); the cookie `sec_session` is HttpOnly, SameSite=Lax, and Secure on https.
+  - A new token on every sign-in, so a planted cookie is never adopted.
+  - Logout deletes the row and returns Keycloak's end-session URL.
+- **Mutations** need `X-CSRF-Token` (from `GET /api/me`) and, when present, a same-origin `Origin`. Unknown body fields → 400.
+- **Errors** are `{"error": code}`: 401 `signed_out`, 403 `bad_csrf` / `bad_origin`, 404 `not_found` (also for another user's ids), 400 `invalid_*`.
+- **Activity** returns raw events of a local day (`day` + IANA `tz`), at most 5,000, with no totals: time is the engine's.
 
 ## Contract Rules
 

@@ -7,11 +7,11 @@
 ## Phase 1
 
 ### M0
-- [ ] OV-1 — API skeleton + web scaffold (Vite, router, query, UI kit)
+- [x] OV-1 — API skeleton + web scaffold (Vite, router, query, UI kit) · 2026-11-20 · `overview/api` (FastAPI on `secretary-orm`, imports the warehouse schema) + `overview/web` (React 19, Vite 7, TanStack Router/Query, Tailwind 4; pnpm workspace); one image (`overview/Dockerfile`) serves API + built app; Compose service `overview` on :8090 boots healthy; CI jobs added
   - Acceptance: both boot in Docker Compose
 
 ### M1
-- [ ] OV-4 — Devices list/rename/revoke (revoke ends the Keycloak offline session)
+- [ ] OV-4 — Devices list/rename/revoke (revoke ends the Keycloak offline session) · 🚧 in progress · 2026-11-20 · list (last seen, version, queue, online/revoked), rename, revoke; test: revoked from the dashboard → the warehouse answers 401 `device_revoked` (acceptance met); left: ending the Keycloak offline session on revoke (needs an admin service account)
   - Acceptance: revoked device rejected by warehouse
 
 ### M2
@@ -19,11 +19,11 @@
   - Acceptance: tray shows live values
 
 ### M4
-- [ ] OV-2 — Keycloak OIDC sign-in (GitHub/Google brokered), cookie sessions, CSRF, logout
+- [ ] OV-2 — Keycloak OIDC sign-in (GitHub/Google brokered), cookie sessions, CSRF, logout · 🚧 in progress · 2026-11-20 · auth code + PKCE (`secretary-dashboard`), HMAC-signed login-state cookie, server-side sessions in `web_sessions` (token hash only, RLS), HttpOnly/SameSite=Lax/Secure-on-https cookie, CSRF header + Origin check on mutations, RP logout; tests: PKCE, state/code/nonce rejection, CSRF/Origin, expiry, logout, session fixation; E2E against Compose Keycloak; left: GitHub/Google brokering (needs OAuth apps)
   - Acceptance: sign in/out; session fixation & CSRF tests
-- [ ] OV-3 — Personal workspace on first sign-in; RLS context per request
+- [x] OV-3 — Personal workspace on first sign-in; RLS context per request · 2026-11-20 · `app_resolve_identity()` on callback provisions user + personal workspace; every request runs in `user_transaction(session.user_id)`; isolation test: user B sees none of A's devices, events, exclusions and cannot rename/revoke/delete them (404)
   - Acceptance: isolation tests pass
-- [ ] OV-5 — Projects, mappings, exclusions, pause windows CRUD (+ config ETag bump)
+- [ ] OV-5 — Projects, mappings, exclusions, pause windows CRUD (+ config ETag bump) · 🚧 in progress · 2026-11-20 · exclusions (folder/app/website) and pause windows: list/add/remove with validation; the agent config (ETag = body hash) changes with them, tested via `agent_config.build`; left: projects and mappings
   - Acceptance: agent picks up changes within 5 min
 - [ ] OV-6 — Onboarding: detected repos → proposed projects; trigger backfill
   - Acceptance: new user reaches Today with data in < 10 min
@@ -44,7 +44,7 @@
   - Acceptance: unassigned + below-threshold items listed
 - [ ] OV-11 — Reports + CSV export
   - Acceptance: CSV totals equal dashboard totals
-- [ ] OV-12 — Privacy: data view, export, delete
+- [ ] OV-12 — Privacy: data view, export, delete · 🚧 in progress · 2026-11-20 · data view: Activity page (per-device day timeline of raw events in the browser's zone + event list with metadata; no totals); left: export, delete
   - Acceptance: delete removes data everywhere
 - [ ] OV-13 — Settings: time zone (re-enqueue on change)
   - Acceptance: day boundaries correct after change
@@ -56,8 +56,8 @@
   - Acceptance: green in CI
 
 ### Security checklist
-- [ ] HTTP-only, Secure, SameSite cookies; CSRF on mutations
-- [ ] RLS context from session on every request, never from body
+- [x] HTTP-only, Secure, SameSite cookies; CSRF on mutations · 2026-11-20 · Secure when PUBLIC_URL is https; tests for CSRF + Origin
+- [x] RLS context from session on every request, never from body · 2026-11-20 · bodies with extra fields (e.g. `user_id`) are rejected; isolation test
 - [ ] No route returns another user's events, evidence, or sessions
 - [ ] CSP, HSTS, no inline scripts
 - [ ] Rate limiting on auth and export endpoints
@@ -90,3 +90,11 @@
 - [ ] OV-44 — Company SSO via Keycloak identity providers
 
 ## Notes
+- 2026-11-20: First dashboard slice, chosen by the user: sign-in, devices, raw activity and exclusions/pause windows, local first, then the VPS.
+  - **OV-5:** exclusions and pause windows only; projects and mappings come later.
+  - **OV-12:** the data view only.
+  - **Activity page:** raw events only, with no totals, because only the engine computes time.
+- 2026-11-20:
+  - **Sessions table:** `web_sessions` is part of the warehouse schema (D15 ownership), with an RLS policy and the SECURITY DEFINER lookup `app_web_session_user()`.
+  - **Database login:** dev Compose reuses the `secretary_warehouse` login for the dashboard. A separate `secretary_overview` login belongs to the hardening work.
+  - **Generated types:** the TypeScript contract is generated into `overview/web/src/generated/` as well (SH-9).

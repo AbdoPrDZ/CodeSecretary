@@ -17,6 +17,7 @@ from secretary_warehouse.schema.models import (  # noqa: F401
   jobs,
   projects,
   team,
+  web,
 )
 
 # sys.model / sys.field: the ORM's rename detection and retired-column

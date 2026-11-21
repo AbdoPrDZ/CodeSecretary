@@ -13,6 +13,7 @@ Status: implemented for the schema (WH-1R: ORM models + SQL in `warehouse/src/se
 | Category | Examples | Rule |
 |---|---|---|
 | Raw | `activity_events` | Insert-only for the app role; deleted only via the privacy-delete procedure |
+| Dashboard sessions | `web_sessions` (token hash, CSRF token, Keycloak `sid`, expiry) | Overview; RLS by owner, looked up before a context exists via `app_web_session_user()` |
 | Config / user data | projects, mappings, exclusions, `time_adjustments`, overrides | Written by Overview; changes enqueue recalculation |
 | Derived | assignments, sessions, evidence, coverage gaps | Written only by Engine; replaced per (user, local day) in one transaction |
 | Shared | `submissions` | The only per-user time data visible to teammates |

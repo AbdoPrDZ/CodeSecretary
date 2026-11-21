@@ -19,3 +19,9 @@
 		header_up X-Forwarded-Port 8444
 	}
 }
+
+# Dashboard (API + web app).
+:8445 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy overview:8090
+}

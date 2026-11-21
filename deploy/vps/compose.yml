@@ -2,12 +2,14 @@
 #
 #   https://<PUBLIC_IP>:8443  warehouse device API
 #   https://<PUBLIC_IP>:8444  Keycloak (issuer https://<PUBLIC_IP>:8444/realms/secretary)
+#   https://<PUBLIC_IP>:8445  dashboard (overview API + web app)
 #
 # Variables come from `.env`, which deploy.py builds on the VPS from:
 #   .env.docker  (yours)  SECRETARY_WH_DB_* and SECRETARY_KC_DB_* for the existing
 #                         it-pg-db; the databases and their owners are yours
-#   .env.deploy  (deploy) PUBLIC_IP, WAREHOUSE_TAG, KEYCLOAK_ADMIN_PASSWORD,
-#                         WAREHOUSE_APP_PASSWORD
+#   .env.deploy  (deploy) PUBLIC_IP, WAREHOUSE_TAG, OVERVIEW_TAG, KEYCLOAK_ADMIN_PASSWORD,
+#                         WAREHOUSE_APP_PASSWORD, DASHBOARD_CLIENT_SECRET,
+#                         OVERVIEW_SESSION_SECRET
 #
 # The warehouse migrates as the table owner (SECRETARY_WH_DB_USERNAME) but serves
 # requests as `secretary_warehouse`, a separate login bound by row-level
@@ -28,6 +30,27 @@ services:
       KEYCLOAK_ISSUER: https://${PUBLIC_IP:?}:8444/realms/secretary
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/secretary/protocol/openid-connect/certs
     networks: [default, it-db-net]
+
+  overview:
+    image: secretary-overview:${OVERVIEW_TAG:?}
+    restart: unless-stopped
+    environment:
+      # RLS-bound like the warehouse's runtime login (never the table owner).
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_APP_PASSWORD}@${SECRETARY_WH_DB_HOSTNAME}:5432/${SECRETARY_WH_DB_NAME}
+      OVERVIEW_BIND: 0.0.0.0:8090
+      PUBLIC_URL: https://${PUBLIC_IP}:8445
+      KEYCLOAK_ISSUER: https://${PUBLIC_IP}:8444/realms/secretary
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/secretary
+      OIDC_CLIENT_ID: secretary-dashboard
+      OIDC_CLIENT_SECRET: ${DASHBOARD_CLIENT_SECRET:?}
+      SESSION_SECRET: ${OVERVIEW_SESSION_SECRET:?}
+      LOG_FORMAT: json
+    networks: [default, it-db-net]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.2
@@ -67,12 +90,14 @@ services:
     ports:
       - "8443:8443"
       - "8444:8444"
+      - "8445:8445"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/certs:ro
     depends_on:
       - warehouse
       - keycloak
+      - overview
 
 networks:
   it-db-net:

@@ -7,7 +7,8 @@
 //! - `warehouse/src/secretary_warehouse/contract/constants.json`: event
 //!   types, limits, reason/error codes and defaults, so Python never repeats
 //!   them by hand.
-//! - `shared/bindings/ts/contract.ts`: TypeScript types for the VS Code
+//! - `shared/bindings/ts/contract.ts`, copied to
+//!   `overview/web/src/generated/contract.ts`: TypeScript types for the VS Code
 //!   extension and the web app.
 //!
 //! Regenerate after changing a contract type:
@@ -43,10 +44,10 @@ pub fn files() -> Vec<(PathBuf, String)> {
         schema::<AgentConfig>(contract, "agent_config"),
     ];
     out.push((contract.join("constants.json"), pretty(&constants())));
-    out.push((
-        PathBuf::from("shared/bindings/ts/contract.ts"),
-        typescript(),
-    ));
+    let ts = typescript();
+    out.push((PathBuf::from("shared/bindings/ts/contract.ts"), ts.clone()));
+    // The dashboard imports its copy from its own tree (Vite bundles only inside it).
+    out.push((PathBuf::from("overview/web/src/generated/contract.ts"), ts));
     out
 }
 

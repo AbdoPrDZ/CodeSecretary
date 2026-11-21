@@ -88,6 +88,14 @@ BEGIN
 END
 $$;
 
+-- Dashboard cookie -> user (OV-2). Only an unexpired session's user id; the
+-- token itself is never stored, only its SHA-256 (hex).
+CREATE OR REPLACE FUNCTION app_web_session_user(p_token_hash text) RETURNS bigint
+    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
+AS $$
+    SELECT user_id FROM web_sessions WHERE token_hash = p_token_hash AND expires_at > now()
+$$;
+
 -- Creates missing monthly partitions from `months_back` before the current
 -- UTC month to `months_ahead` after it. Returns how many were created.
 -- No default partition: events outside the range are rejected (validation
@@ -125,7 +133,8 @@ BEGIN
     FOREACH fn IN ARRAY ARRAY[
         'app_workspace_role(bigint)', 'app_is_member(bigint)', 'app_is_admin(bigint)',
         'app_workspace_has_members(bigint)', 'app_can_view_team_submissions(bigint)',
-        'app_resolve_identity(text, text, text, text)', 'app_ensure_event_partitions(integer, integer)'
+        'app_resolve_identity(text, text, text, text)', 'app_ensure_event_partitions(integer, integer)',
+        'app_web_session_user(text)'
     ] LOOP
         EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO secretary_app', fn);
@@ -167,7 +176,7 @@ BEGIN
         'activity_events', 'projects', 'project_links', 'project_mappings', 'exclusions',
         'rule_proposals', 'event_assignments', 'work_sessions', 'session_evidence',
         'coverage_gaps', 'assignment_overrides', 'time_adjustments', 'ai_classifications',
-        'ai_request_log', 'submissions', 'audit_log'
+        'ai_request_log', 'submissions', 'audit_log', 'web_sessions'
     ] LOOP
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     END LOOP;
@@ -227,6 +236,13 @@ CREATE POLICY invitations_admin ON invitations
 -- use a SECURITY DEFINER function.
 DROP POLICY IF EXISTS devices_owner ON devices;
 CREATE POLICY devices_owner ON devices
+    USING (user_id = app_current_user_id())
+    WITH CHECK (user_id = app_current_user_id());
+
+-- Dashboard sessions (OV-2): the owner manages their own; lookup by token
+-- before a context exists is app_web_session_user().
+DROP POLICY IF EXISTS web_sessions_owner ON web_sessions;
+CREATE POLICY web_sessions_owner ON web_sessions
     USING (user_id = app_current_user_id())
     WITH CHECK (user_id = app_current_user_id());
 
@@ -349,6 +365,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
     processing_jobs
     TO secretary_app;
 GRANT SELECT, INSERT ON ai_request_log, audit_log TO secretary_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON web_sessions TO secretary_app;
 -- sys_model / sys_field (ORM schema bookkeeping): owner only, no grants.
 
 DO $$
@@ -361,7 +378,7 @@ BEGIN
         'activity_events', 'projects', 'project_links', 'project_mappings', 'exclusions',
         'rule_proposals', 'event_assignments', 'work_sessions', 'session_evidence',
         'coverage_gaps', 'assignment_overrides', 'time_adjustments', 'ai_classifications',
-        'ai_request_log', 'submissions', 'audit_log', 'processing_jobs'
+        'ai_request_log', 'submissions', 'audit_log', 'processing_jobs', 'web_sessions'
     ] LOOP
         -- pg_get_serial_sequence returns an already-quoted, qualified name.
         EXECUTE format('GRANT USAGE ON SEQUENCE %s TO secretary_app', pg_get_serial_sequence(t, 'id'));

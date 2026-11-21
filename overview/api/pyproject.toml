@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secretary-overview"
+version = "0.1.0"
+description = "CodeSecretary dashboard API: sign-in, devices, activity, exclusions"
+requires-python = ">=3.13"
+dependencies = [
+  "secretary-warehouse",      # ../../warehouse: the schema models and RLS helpers (D15)
+  "fastapi==0.121.0",
+  "uvicorn==0.38.0",
+  "httpx==0.28.1",            # Keycloak token exchange (backchannel)
+  "pyjwt[crypto]==2.10.1",    # ID token verification
+  "tzdata==2025.2",           # IANA zones for local days (slim images and Windows have none)
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==8.4.2",
+]
+
+[project.scripts]
+secretary-overview = "secretary_overview.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

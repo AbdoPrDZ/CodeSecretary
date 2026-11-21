@@ -42,8 +42,8 @@
 
 ### M0 — Foundations
 - [ ] Root Cargo workspace (`shared`, `agent/daemon`, `engine`) — shared + agent in; engine pending. Python packages: `orm`, `warehouse` (overview/api later, D15)
-- [ ] pnpm workspace (`agent/vscode`, `overview/web`)
-- [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres, Keycloak, warehouse in
+- [ ] pnpm workspace (`agent/vscode`, `overview/web`) — `overview/web` in (2026-11-20); `agent/vscode` with AG-13
+- [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres, Keycloak, warehouse, overview in
 - [ ] CI: fmt, clippy, tests, TS lint/test, web build
 - [ ] SHARED M0 tasks done
 - [ ] AGENT M0 tasks done
@@ -145,3 +145,4 @@
 | 2026-11-20 | M1: redaction engine + corpus (SH-5), URL stripping + remote normalization (SH-6), agent pipeline redacts before buffering (AG-6 done) |
 | 2026-11-20 | M1: contract generation (SH-9): JSON Schemas + constants for the warehouse, TypeScript types, CI staleness check; warehouse validates event shape against the generated schema |
 | 2026-11-20 | VPS test deployment (`deploy/vps/`): warehouse image built locally and loaded over SSH; Keycloak + warehouse behind Caddy (HTTPS by IP, private CA) on the server's existing Postgres `it-pg-db`; `pre.sql` no longer needs CREATEROLE when `secretary_app` exists |
+| 2026-11-20 | Overview first slice: `overview/api` + `overview/web`, Keycloak sign-in with server-side sessions (`web_sessions`), devices, raw activity timeline, exclusions and pause windows (OV-1, OV-3 done; OV-2, OV-4, OV-5, OV-12 in progress) |

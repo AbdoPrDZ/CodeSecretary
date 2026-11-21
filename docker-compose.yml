@@ -50,6 +50,31 @@ services:
       postgres:
         condition: service_healthy
 
+  # Dashboard API + web app (OV-1): http://localhost:8090, sign-in via Keycloak.
+  # Reads the warehouse's schema, so the warehouse migrates first.
+  overview:
+    build:
+      context: .
+      dockerfile: overview/Dockerfile
+    environment:
+      # An RLS-bound login (member of secretary_app); dev reuses the warehouse's.
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_DB_PASSWORD:-warehouse}@postgres:5432/secretary
+      OVERVIEW_BIND: 0.0.0.0:8090
+      PUBLIC_URL: http://localhost:8090
+      KEYCLOAK_ISSUER: http://localhost:8180/realms/secretary
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/realms/secretary
+      OIDC_CLIENT_ID: secretary-dashboard
+      OIDC_CLIENT_SECRET: ${DASHBOARD_CLIENT_SECRET:-dev-dashboard-secret}
+      SESSION_SECRET: ${OVERVIEW_SESSION_SECRET:-dev-only-session-secret-change-me-0000}
+      LOG_FORMAT: json
+    ports:
+      - "8090:8090"
+    depends_on:
+      warehouse:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
   # Identity provider (D14). Dev mode: HTTP, realm imported from
   # deploy/keycloak/import on first start (skipped once the realm exists).
   keycloak:

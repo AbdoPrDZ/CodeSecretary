@@ -1,0 +1,10 @@
+{
+  "name": "codesecretary",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "web:dev": "pnpm --filter @secretary/overview-web dev",
+    "web:build": "pnpm --filter @secretary/overview-web build",
+    "web:test": "pnpm --filter @secretary/overview-web test"
+  }
+}

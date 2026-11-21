@@ -7,8 +7,9 @@
 2. Keeps, in `deploy/vps/secrets/` (git-ignored): `.env.deploy` with the
    deploy-owned values (public IP, image tag, Keycloak admin password, the
    RLS-bound app login's password) and a private CA + server certificate.
-3. Builds `secretary-warehouse:<git sha>` locally and streams it into
-   `docker load` on the VPS. Keycloak and Caddy are pulled by the VPS.
+3. Builds `secretary-warehouse:<git sha>` and `secretary-overview:<git sha>`
+   locally and streams them into `docker load` on the VPS. Keycloak and Caddy
+   are pulled by the VPS.
 4. Database settings are the server owner's `DIR/.env.docker`
    (`SECRETARY_WH_DB_*`, `SECRETARY_KC_DB_*`); the databases and their owner
    logins are created by the server owner. Read on the VPS only, the deploy
@@ -17,6 +18,9 @@
 5. Uploads `compose.yml`, `Caddyfile`, `.env.deploy`, the server certificate
    and the realm (without the dev test user), writes `DIR/.env` =
    `.env.docker` + `.env.deploy`, then `docker compose up -d --wait`.
+6. Points the realm's `secretary-dashboard` client at the dashboard URL and
+   sets its secret (the import carries the dev secret; Keycloak skips imports
+   once the realm exists, so this is applied with `kcadm` every time).
 
 Re-running deploys a new image and keeps data, passwords and the CA.
 """
@@ -87,17 +91,58 @@ def ensure_deploy_env(ip: str, tag: str) -> Path:
   old = read_env(SECRETS / '.env')  # first layout; reuse its admin password
   values.setdefault('KEYCLOAK_ADMIN_PASSWORD', old.get('KEYCLOAK_ADMIN_PASSWORD') or secrets.token_urlsafe(24))
   values.setdefault('WAREHOUSE_APP_PASSWORD', secrets.token_urlsafe(24))
+  values.setdefault('DASHBOARD_CLIENT_SECRET', secrets.token_urlsafe(32))
+  values.setdefault('OVERVIEW_SESSION_SECRET', secrets.token_urlsafe(48))
   values['PUBLIC_IP'] = ip
   values['WAREHOUSE_TAG'] = tag
+  values['OVERVIEW_TAG'] = tag
   path.write_text('# Deploy-owned values (deploy/vps/deploy.py). Database settings: .env.docker\n'
                   + ''.join(f'{k}={v}\n' for k, v in values.items()), encoding='utf-8')
   return path
 
 
-def realm_without_test_users() -> bytes:
+def server_realm(ip: str, dashboard_secret: str) -> bytes:
+  """The dev realm made fit for a server (applies on a first import only)."""
+
   realm = json.loads((ROOT / 'deploy/keycloak/import/secretary-realm.json').read_text(encoding='utf-8'))
   realm.pop('users', None)  # the dev user (dev@example.test / dev) must not exist on a server
+  for client in realm.get('clients', []):
+    if client.get('clientId') == 'secretary-dashboard':
+      client.update(dashboard_client(ip))
+      client['secret'] = dashboard_secret
   return json.dumps(realm, indent=2).encode()
+
+
+def dashboard_url(ip: str) -> str:
+  return f'https://{ip}:8445'
+
+
+def dashboard_client(ip: str) -> dict:
+  url = dashboard_url(ip)
+  return {'redirectUris': [f'{url}/*'], 'webOrigins': [url], 'rootUrl': url,
+          'attributes': {'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': f'{url}/*'}}
+
+
+#: Runs on the VPS: the bootstrap admin password and the dashboard secret stay
+#: in environment variables (the container's and `.env`), off command lines.
+KC_CLIENT_SETUP = r'''
+set -eu
+cd "$1"
+set -a; . ./.env; set +a
+docker compose exec -T -e DASHBOARD_CLIENT_SECRET keycloak sh -c '
+  set -eu
+  kc=/opt/keycloak/bin/kcadm.sh; cfg=/tmp/kcadm.config
+  $kc config credentials --config $cfg --server http://localhost:8080 --realm master \
+      --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" >/dev/null
+  id=$($kc get clients --config $cfg -r secretary -q clientId=secretary-dashboard --fields id --format csv --noquotes)
+  $kc update clients/$id --config $cfg -r secretary -f - <<JSON
+'"$2"'
+JSON
+  $kc update clients/$id --config $cfg -r secretary -s "secret=$DASHBOARD_CLIENT_SECRET"
+  rm -f $cfg
+  echo "dashboard client configured"
+'
+'''
 
 
 def sh(*args: str) -> str:
@@ -131,12 +176,13 @@ def main() -> int:
   subprocess.run([sys.executable, str(HERE / 'make_certs.py'), ip, str(SECRETS / 'certs')], check=True)
   deploy_env = ensure_deploy_env(ip, tag)
 
-  step(f'building secretary-warehouse:{tag}')
-  subprocess.run(['docker', 'build', '-q', '-f', 'warehouse/Dockerfile', '-t', f'secretary-warehouse:{tag}', '.'],
-                 cwd=ROOT, check=True)
+  images = [f'secretary-warehouse:{tag}', f'secretary-overview:{tag}']
+  for image, dockerfile in zip(images, ['warehouse/Dockerfile', 'overview/Dockerfile']):
+    step(f'building {image}')
+    subprocess.run(['docker', 'build', '-q', '-f', dockerfile, '-t', image, '.'], cwd=ROOT, check=True)
   with tempfile.TemporaryDirectory() as tmp:
-    tar = Path(tmp) / 'warehouse.tar'
-    subprocess.run(['docker', 'save', '-o', str(tar), f'secretary-warehouse:{tag}'], check=True)
+    tar = Path(tmp) / 'images.tar'
+    subprocess.run(['docker', 'save', '-o', str(tar), *images], check=True)
     size = tar.stat().st_size / 1e6
 
     client = vps.connect()
@@ -144,7 +190,7 @@ def main() -> int:
       if vps.run(client, f'test -f {remote}/.env.docker') != 0:
         sys.exit(f'{remote}/.env.docker (SECRETARY_WH_DB_*, SECRETARY_KC_DB_*) is missing on the VPS')
 
-      step(f'uploading the image ({size:.0f} MB) into docker load')
+      step(f'uploading the images ({size:.0f} MB) into docker load')
       if vps.load(client, str(tar)) != 0:
         return 1
 
@@ -156,7 +202,9 @@ def main() -> int:
       upload_text(client, (SECRETS / 'certs/server.crt').read_bytes(), f'{remote}/certs/server.crt')
       # Caddy reads the key as another user inside its container.
       upload_text(client, (SECRETS / 'certs/server.key').read_bytes(), f'{remote}/certs/server.key', 0o644)
-      upload_text(client, realm_without_test_users(), f'{remote}/keycloak-import/secretary-realm.json')
+      deploy_values = read_env(deploy_env)
+      upload_text(client, server_realm(ip, deploy_values['DASHBOARD_CLIENT_SECRET']),
+                  f'{remote}/keycloak-import/secretary-realm.json', 0o600)
       vps.run(client, f'cd {remote} && {{ echo "# Generated by deploy.py from .env.docker + .env.deploy; edit those."; '
                       f'cat .env.docker; echo; cat .env.deploy; }} > .env && chmod 600 .env')
 
@@ -170,7 +218,13 @@ def main() -> int:
       step('docker compose up (pulls Keycloak and Caddy on first run)')
       code = vps.run(client, f"cd {remote} && bash -o pipefail -c "
                              f"'docker compose up -d --wait --remove-orphans 2>&1 | tail -15'")
+      if code == 0:
+        step('dashboard client in Keycloak')
+        upload_text(client, KC_CLIENT_SETUP, f'{remote}/.kc-setup.sh', 0o700)
+        code = vps.run(client, f"sh {remote}/.kc-setup.sh {remote} '{json.dumps(dashboard_client(ip))}'; s=$?; "
+                               f'rm -f {remote}/.kc-setup.sh; exit $s')
       vps.run(client, f'cd {remote} && docker compose ps --format "{{{{.Service}}}}: {{{{.Status}}}}"')
+      print(f'dashboard: {dashboard_url(ip)}')
       return code
     finally:
       client.close()
