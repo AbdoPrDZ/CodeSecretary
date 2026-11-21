@@ -11,6 +11,7 @@
     "heartbeat_interval_secs": 60,
     "pause_windows": [],
     "project_roots": [],
+    "redaction": "secrets",
     "redaction_version": 1,
     "upload_interval_secs": 60,
     "upload_max_events": 500

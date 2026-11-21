@@ -67,6 +67,8 @@ pub struct AgentConfig {
     /// Directories the Git tracker scans for repositories (AG-10).
     pub project_roots: Vec<String>,
     pub redaction_version: u32,
+    /// What the agent masks before buffering (D18).
+    pub redaction: RedactionLevel,
     #[cfg_attr(feature = "codegen", ts(type = "number"))]
     pub upload_interval_secs: u64,
     pub upload_max_events: u32,
@@ -84,6 +86,7 @@ impl Default for AgentConfig {
             pause_windows: Vec::new(),
             project_roots: Vec::new(),
             redaction_version: REDACTION_VERSION,
+            redaction: RedactionLevel::default(),
             upload_interval_secs: defaults::UPLOAD_INTERVAL.as_secs(),
             upload_max_events: defaults::UPLOAD_MAX_EVENTS,
             heartbeat_interval_secs: defaults::HEARTBEAT_INTERVAL.as_secs(),
@@ -106,6 +109,23 @@ impl AgentConfig {
     pub fn paused_at(&self, at: NaiveDateTime) -> Option<&PauseWindow> {
         self.pause_windows.iter().find(|w| w.contains(at))
     }
+}
+
+/// How much the agent masks before buffering (D18). Never collected at any
+/// level: file contents, keystrokes, clipboard, screenshots.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "codegen", derive(schemars::JsonSchema, ts_rs::TS))]
+#[serde(rename_all = "snake_case")]
+pub enum RedactionLevel {
+    /// Credentials only (keys, tokens, passwords, private keys, URL
+    /// user:password); everything else as collected.
+    #[default]
+    Secrets,
+    /// Nothing masked (remotes are still normalized).
+    None,
+    /// Every SH-5 rule: titles cut and stripped of URLs and e-mails, paths
+    /// and free text masked for high-entropy strings too.
+    Full,
 }
 
 /// What the agent must never collect. Matching events are dropped before

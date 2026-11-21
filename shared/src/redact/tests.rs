@@ -215,3 +215,104 @@ fn redact_applies_per_field_rules() {
     redact(&mut presence);
     assert_eq!(presence, before);
 }
+
+/// Corpus kinds that are credentials; the `secrets` level must mask all of
+/// them. The others (random ids, e-mails, URL query values) stay at that level.
+const NOT_CREDENTIALS: &[&str] = &[
+    "generic_hex",
+    "generic_base64",
+    "email",
+    "url_query",
+    "url_fragment",
+    "url_path_token",
+];
+
+#[test]
+fn secrets_level_masks_every_credential_in_the_corpus() {
+    let mut survivors = Vec::new();
+    for item in corpus()
+        .items
+        .iter()
+        .filter(|i| !NOT_CREDENTIALS.contains(&i.kind.as_str()))
+    {
+        let out = mask_credentials(&item.text());
+        if out.contains(&item.secret()) {
+            survivors.push(format!("{}: {out}", item.kind));
+        }
+    }
+    assert!(
+        survivors.is_empty(),
+        "{} survived:\n{}",
+        survivors.len(),
+        survivors.join("\n")
+    );
+}
+
+#[test]
+fn secrets_level_keeps_paths_titles_and_ids() {
+    let token = ["ghp_", "abcdefghijklmnop", "qrstuvwxyz0123456789"].concat();
+    let folder = "C:/Users/dev/Temp/414a1847-94f5-4475-b571-8a067698fef9/api";
+    let title = format!(
+        "main.rs - api - dev@example.test - https://jira.acme.test/browse/ACME-12?filter=open - {token}"
+    );
+    let mut focus = Event::new(
+        Source::new("agent", "0.1.0"),
+        "2026-11-20T09:00:00Z".parse().unwrap(),
+        Some("2026-11-20T09:01:00Z".parse().unwrap()),
+        Payload::WindowFocus(WindowFocus {
+            app: Some("Code.exe".into()),
+            title: Some(title),
+        }),
+    );
+    focus.repository = Some(RepositoryRef {
+        root_path: Some(folder.into()),
+        remote_url: Some(format!("https://{token}@github.com/acme/api.git")),
+    });
+    let mut none = focus.clone();
+    redact_with(&mut focus, RedactionLevel::Secrets);
+
+    let repo = focus.repository.as_ref().unwrap();
+    assert_eq!(
+        repo.root_path.as_deref(),
+        Some(folder),
+        "paths are sent as collected"
+    );
+    assert_eq!(
+        repo.remote_url.as_deref(),
+        Some("github.com/acme/api"),
+        "remotes are normalized"
+    );
+    let Payload::WindowFocus(m) = &focus.payload else {
+        unreachable!()
+    };
+    let title = m.title.as_deref().unwrap();
+    assert!(
+        title.contains("dev@example.test") && title.contains("?filter=open"),
+        "{title}"
+    );
+    assert!(!title.contains(&token), "credentials are masked: {title}");
+
+    redact_with(&mut none, RedactionLevel::None);
+    let Payload::WindowFocus(m) = &none.payload else {
+        unreachable!()
+    };
+    assert!(
+        m.title.as_deref().unwrap().contains(&token),
+        "`none` masks nothing"
+    );
+    assert_eq!(
+        none.repository.as_ref().unwrap().remote_url.as_deref(),
+        Some("github.com/acme/api")
+    );
+}
+
+#[test]
+fn default_level_is_secrets() {
+    assert_eq!(
+        crate::config::AgentConfig::default().redaction,
+        RedactionLevel::Secrets
+    );
+    let parsed: crate::config::AgentConfig =
+        serde_json::from_str(r#"{"redaction":"full"}"#).unwrap();
+    assert_eq!(parsed.redaction, RedactionLevel::Full);
+}

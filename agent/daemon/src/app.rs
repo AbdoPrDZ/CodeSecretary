@@ -18,7 +18,7 @@ use crate::remote_config::{CONFIG_REFRESH, ConfigCache, ConfigTask, PAUSE_CHECK,
 use crate::status::{StatusBoard, StatusWriter, WRITE_EVERY};
 use crate::supervisor::{ShutdownOutcome, Supervisor};
 use crate::uploader::{UPLOAD_EVERY, Uploader};
-use crate::{presence, shutdown};
+use crate::{git, presence, shutdown};
 
 /// How long components get to flush after a stop request. Kept under the
 /// ~5 s Windows allows for console-close/logoff handlers where possible;
@@ -70,12 +70,27 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
     });
     supervisor.spawn("pause", {
         let watch = PauseWatch {
-            cache: config_cache,
+            cache: config_cache.clone(),
             pipeline: pipeline.clone(),
             status: status.clone(),
             every: PAUSE_CHECK,
         };
         move |token| watch.run(token)
+    });
+    supervisor.spawn("git", {
+        let pipeline = pipeline.clone();
+        let status = status.clone();
+        let state_file = paths.git_state_file();
+        let local_roots = config.project_roots.clone();
+        move |token| {
+            // Local roots plus the dashboard's, read again at every rescan.
+            let roots = move || {
+                let mut all = local_roots.clone();
+                all.extend(config_cache.current().config.project_roots.iter().cloned());
+                git::effective_roots(&all)
+            };
+            git::run(pipeline, status, state_file, roots, token)
+        }
     });
     supervisor.spawn("presence", move |token| {
         presence::run(pipeline, status, token)

@@ -86,8 +86,8 @@ The UI shows a "recalculating…" state until the job completes (poll job status
 | OV-2 | Keycloak OIDC sign-in (GitHub/Google brokered), server-side cookie sessions, CSRF, logout | M4 | Sign in/out works; session fixation & CSRF tests |
 | OV-3 | Personal workspace creation on first sign-in; RLS context per request | M4 | Isolation tests pass |
 | OV-4 | Devices list/rename/revoke (revoke ends the Keycloak offline session) | M1 | Revoked device rejected by warehouse |
-| OV-5 | Projects, mappings, exclusions, pause windows CRUD (+ agent config ETag bump) | M4 | Agent picks up changes within 5 min |
-| OV-6 | Onboarding: detected repos → proposed projects; trigger backfill | M4 | New user reaches Today view with data in < 10 min |
+| OV-5 | Projects (created by the user, D17), mapping rules with a match preview (folders, remotes, domains, apps, titles), exclusions, pause windows CRUD (+ agent config ETag bump) | M4 | Agent picks up changes within 5 min; a rule shows how many recent events it matches before saving |
+| OV-6 | Onboarding: create projects and rules (D17); detected repos offered as optional suggestions; trigger backfill | M4 | New user reaches Today view with data in < 10 min |
 | OV-7 | Today timeline + Week grid (read sessions) | M4 | Matches engine output; multi-device shown |
 | OV-8 | Session detail with evidence | M4 | Every session explains itself |
 | OV-9 | Corrections (all actions in §5) + job enqueue + recalculating state | M4 | Correction visible after recalculation; survives algorithm re-run |

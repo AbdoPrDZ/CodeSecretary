@@ -188,6 +188,14 @@ pub fn rows(status: &AgentStatus, now: DateTime<Utc>) -> Vec<(&'static str, Vec<
     };
     out.push(("Activity", presence));
 
+    out.push((
+        "Git",
+        vec![
+            row("Repositories", status.git.repositories.to_string()),
+            row("Last Git activity", when(status.git.last_event_at)),
+        ],
+    ));
+
     let cfg = &status.config;
     out.push((
         "Rules",
@@ -331,6 +339,7 @@ mod tests {
                 "Uploads",
                 "Heartbeat",
                 "Activity",
+                "Git",
                 "Rules",
                 "Agent"
             ]

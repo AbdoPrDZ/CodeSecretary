@@ -67,6 +67,11 @@ impl AgentPaths {
         self.data_dir.join("stop.request")
     }
 
+    /// Git tracker reflog positions (AG-10).
+    pub fn git_state_file(&self) -> PathBuf {
+        self.data_dir.join("git_state.json")
+    }
+
     /// Status for the panel (`secretary_shared::local`), rewritten every few seconds.
     pub fn status_file(&self) -> PathBuf {
         self.data_dir.join(secretary_shared::local::STATUS_FILE)

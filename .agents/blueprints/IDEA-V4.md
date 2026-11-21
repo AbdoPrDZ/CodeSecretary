@@ -98,7 +98,7 @@ Developers who switch between several projects per day cannot reliably answer *"
 1. Sign up on the web with GitHub or Google. A **personal workspace** is created.
 2. Download and install the agent. Sign in through the browser (Keycloak device authorization flow); the agent keeps a refresh token in the OS keychain.
 3. Grant OS permissions, each with a plain-language explanation.
-4. Choose project roots (e.g., `~/code`). The agent detects repositories; the dashboard proposes one project per repository; the user merges, renames, or ignores.
+4. Create projects and bind evidence to them with rules (folders, repository remotes, websites, apps, titles), with a preview of what each rule matches (D17). Optionally choose project roots (e.g., `~/code`): the agent detects repositories and the dashboard offers each as a one-click suggestion.
 5. Install the VS Code extension and browser extension (both talk to the local agent, not directly to the cloud).
 6. Optional: **backfill** the last 4 weeks from Git history (marked *estimated*).
 7. Choose AI mode: **Off** (default) · **On**.
@@ -523,7 +523,7 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 | D3 | **Local agent + cloud platform** (replaces local-first) | Multi-device and team use; heavy processing and AI off the laptop |
 | D4 | **Multi-tenant from day one** (workspaces + RLS) | Retrofitting tenancy later is expensive and risky; first release still single-user |
 | D5 | **Private until submitted** | Makes team adoption acceptable; avoids surveillance; reduces legal exposure |
-| D6 | Redaction in the agent | Sensitive data never leaves the device unredacted |
+| D6 | Redaction in the agent (amended by D18) | Sensitive data never leaves the device unredacted |
 | D7 | Postgres, not a data warehouse | Volume is small (~1 GB/user/year); one database is simpler; add analytics store later if needed |
 | D8 | Postgres-based job queue | No extra infrastructure until scale demands it |
 | D9 | Rust for the agent and engine, with a shared crate (amended by D15) | One event schema and redaction implementation; no drift between components |
@@ -532,6 +532,8 @@ All tables carry `workspace_id` and/or `user_id`; access is enforced with **Post
 | D12 | Browser and editor extensions talk to the local agent, not the cloud | One authenticated upload path; redaction and buffering in one place |
 | D13 | AI off by default; stricter of user and workspace policy wins | Privacy-first; product must work on rules alone |
 | D15 | **Warehouse and dashboard API in Python on `secretary-orm`; the ORM owns the schema** (2026-11-07) | One model definition for every Python service, written in the owner's own ORM (from J-ERP); tables, columns, indexes, FKs and checks come from the models, while RLS policies, grants, partitions and SECURITY DEFINER functions stay in idempotent SQL run in the same migration transaction. The event contract reaches Python as JSON Schema generated from `shared/`. Cost: two backend languages; bigint ids instead of UUIDs (agent event IDs stay UUIDv7) |
+| D18 | **Send collected data as is; mask credentials only (default)** (2026-11-21) | The owner informs users what is collected; full paths, titles and URLs make project rules work (masked folder names broke them). A `redaction` setting in the agent config chooses `secrets` (default: keys, tokens, passwords, private keys, URL user:password masked), `none`, or `full` (the original rules). Credentials stay masked by default because a database leak would otherwise expose users' accounts, at no cost to tracking. Never collected at any level: file contents, keystrokes, clipboard, screenshots |
+| D17 | **Projects are created by the user; rules bind evidence to them** (2026-11-21) | The user knows which work belongs to which client or project; guessing from repositories alone is wrong for monorepos, client work in shared repos and non-Git work. A project gets rules on folders, repository remotes, websites, apps and window titles; the engine applies them (section 10.1). Detected repositories are only offered as optional one-click suggestions. Unmatched activity goes to the review inbox. Cost = engine time x the project's rate |
 | D16 | **Android app (Phase 2): collector + companion; no iOS** (2026-11-20) | Phone work (reviewing PRs, chat, docs) is part of project time, and Android exposes app usage through `UsageStatsManager`. iOS has no equivalent. Kotlin, not the Rust daemon: the Android APIs are JVM-first, and the event contract comes from the SH-9 JSON Schema. Sign-in uses Keycloak authorization code + PKCE (client `secretary-android`); the device grant is for devices without a convenient browser |
 | D14 | **Keycloak is the identity provider for users and devices** (2026-11-07) | One standard auth system (OIDC, device grant, MFA, social login, enterprise SSO) instead of custom device tokens; self-hosters can reuse it. Cost: an extra JVM service in Compose, token refresh in the agent. Authorization (workspaces, roles, RLS) stays in Postgres |
 

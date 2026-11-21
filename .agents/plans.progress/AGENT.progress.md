@@ -33,9 +33,9 @@
 ### M2
 - [ ] AG-8 — Presence collector (Windows, macOS, Linux X11; Wayland best-effort) · 🚧 in progress · 2026-11-14 · `presence.rs`: 5 s poll, idle after 60 s back-dated to last input (never before collector start), 5 min checkpoints, sleep-gap handling, flush on shutdown; 6 state-machine tests; E2E on Windows: intervals stored in Postgres; left: manual ±10 s script on each OS
   - Acceptance: idle intervals match manual test script ±10 s
-- [ ] AG-9 — Focus collector
+- [ ] AG-9 — Focus collector · 🚧 in progress · 2026-11-21 · `focus.rs`: `window.focus` intervals (app + title) while active; a change of app or title closes the interval, idle ends it at the last input, 5 min cuts, < 2 s dropped (debounce), sleep gap ends it at the last sample; sampled every 1 s in the presence collector's loop (same thread and OS connection; presence still every 5 s); titles capped at 2,048 chars, credentials masked by the pipeline (D18 `secrets`); 7 tests. Left: a real run while the user is active (a 25 s run on Windows recorded nothing because the user was idle the whole time, as intended)
   - Acceptance: focus intervals correct; titles redacted
-- [ ] AG-10 — Git tracker (discover, watch, remote normalize)
+- [x] AG-10 — Git tracker (discover, watch, remote normalize) · 2026-11-21 · `git.rs`: discovers repositories under project roots (depth 4, skips hidden/build/system folders, worktrees and submodules via `.git` files), polls each reflog every 5 s and turns new lines into `git.commit` / `git.checkout` / `git.merge` with their exact time; branch and remote read from `.git`; offsets persisted (`git_state.json`), history never re-reported; 8 tests. E2E with real git on Windows: commit + 2 checkouts in the buffer within one poll (5 s), remote normalized to `github.com/acme/api` with the token removed, no commit message, pre-existing history not reported; the warehouse validator accepts the events. "Appear" = collected; they reach the warehouse with the next upload (at most 60 s)
   - Acceptance: commits/checkouts appear within 10 s
 - [ ] AG-11 — Git backfill
   - Acceptance: N weeks imported once; idempotent re-run
@@ -89,10 +89,16 @@
   - **Pause windows:** applied in device local time. Point events inside a window are dropped. Intervals are cut at the window edges: the first piece keeps the event id, later pieces get new ones. `agent.*` events are exempt, so the `agent.pause` / `agent.resume` markers themselves are kept.
   - **Exclusions:** an event is dropped whole if its repository root, working directory, workspace path, root + file path, or focused app matches. A leading `~` in path patterns is expanded to the home directory.
   - **Config cache:** `agent_config.json` survives `logout`, because events buffered while signed out are uploaded later and must still be filtered.
-  - **Not yet driven by config:** upload, heartbeat and edit-aggregation timings are still the built-in constants (equal to the defaults), and `project_roots` is unused until AG-10.
+  - **Not yet driven by config:** upload, heartbeat and edit-aggregation timings are still the built-in constants (equal to the defaults), and `project_roots` is used by the Git tracker since AG-10 (2026-11-21).
 - 2026-11-21 (AG-14):
   - **One program, two processes:** at the user's request, `codesecretary` is the one program to start. It runs the daemon as a separate process, so the GUI costs the daemon nothing.
   - **Widget placement:** it always opens at the top right of the screen; the position is not restored.
   - **egui fonts:** the default font lacks `✕` and `⋯`, so the buttons use ASCII.
   - **Not yet tested by hand:** tray clicks while the widget is hidden, and the sign-in flow from the widget. `login --json` itself was checked from the command line.
+- 2026-11-21 (AG-10):
+  - **No `gix` for watching:** the tracker reads `.git/logs/HEAD` (the reflog), whose lines carry the commit, checkout and merge with their exact time. That needs no extra dependency. `gix` stays planned for AG-11, which has to walk history.
+  - **Project roots:** remote `project_roots` (none stored yet) plus `project_roots` in `agent.toml`. If both are empty, the home directory is scanned, depth-limited and skipping hidden, system and build folders.
+  - **History is not reported:** a newly found repository starts at the end of its reflog; past commits are backfill (AG-11).
+  - **Over-redaction found in E2E:** a UUID-like folder name in a repository root path became `[redacted]` (the generic high-entropy rule in `shared/` redaction). Harmless for privacy, but folder rules (OV-5, D17) would not match such paths. Resolved by D18 (2026-11-21): the default `secrets` level leaves paths as collected; the pipeline uses the configured level.
+  - **Not done:** `files_changed` stays empty (it needs a diff, which the reflog doesn't have; `gix` in AG-11 can fill it).
 

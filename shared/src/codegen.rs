@@ -166,6 +166,7 @@ fn typescript() -> String {
         AgentConfig,
         config::Exclusions,
         config::PauseWindow,
+        config::RedactionLevel,
     ];
     let types = serde_json::to_string(event::EVENT_TYPES).expect("json");
     format!(

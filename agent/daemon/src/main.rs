@@ -9,6 +9,8 @@ mod auth;
 mod buffer;
 mod cli;
 mod config;
+mod focus;
+mod git;
 mod heartbeat;
 mod instance;
 mod logging;

@@ -35,7 +35,7 @@
 
 - **Only `engine/` computes time.** Overview reads results; everyone else enqueues jobs.
 - **Deterministic engine.** AI never sets durations. Output changes require golden-test updates and an `ALGORITHM_VERSION` bump.
-- **Redact in the agent** before data is buffered or sent. Never collect file contents, keystrokes, clipboard, or screenshots.
+- **Mask credentials in the agent** before data is buffered or sent (D18: `redaction` setting, default `secrets`; paths, titles and URLs are sent as collected). Never collect file contents, keystrokes, clipboard, or screenshots.
 - **Never log event metadata** (titles, URLs, paths, commands).
 - **Multi-tenant from day one.** Every tenant table has RLS (policy in `post.sql`, added with its model) plus an isolation test. Tenant identity comes from the token/session, never the payload.
 - **Private until submitted.** No feature may expose one user's raw activity to another user or admin.

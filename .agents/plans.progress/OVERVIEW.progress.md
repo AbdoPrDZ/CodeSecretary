@@ -25,7 +25,7 @@
   - Acceptance: isolation tests pass
 - [ ] OV-5 — Projects, mappings, exclusions, pause windows CRUD (+ config ETag bump) · 🚧 in progress · 2026-11-20 · exclusions (folder/app/website) and pause windows: list/add/remove with validation; the agent config (ETag = body hash) changes with them, tested via `agent_config.build`; left: projects and mappings
   - Acceptance: agent picks up changes within 5 min
-- [ ] OV-6 — Onboarding: detected repos → proposed projects; trigger backfill
+- [ ] OV-6 — Onboarding: create projects and rules (D17); detected repos offered as optional suggestions; trigger backfill
   - Acceptance: new user reaches Today with data in < 10 min
 - [ ] OV-7 — Today timeline + Week grid
   - Acceptance: matches engine output; multi-device shown
@@ -98,3 +98,4 @@
   - **Sessions table:** `web_sessions` is part of the warehouse schema (D15 ownership), with an RLS policy and the SECURITY DEFINER lookup `app_web_session_user()`.
   - **Database login:** dev Compose reuses the `secretary_warehouse` login for the dashboard. A separate `secretary_overview` login belongs to the hardening work.
   - **Generated types:** the TypeScript contract is generated into `overview/web/src/generated/` as well (SH-9).
+- 2026-11-21: Decision D17 (user): projects are created by the user and bound to evidence by rules; detected repositories are optional suggestions. OV-5 now includes a match preview for rules; OV-6 rescoped accordingly.

@@ -19,6 +19,9 @@ pub struct LocalConfig {
     /// `tracing` filter directive, e.g. `info` or `secretary_agent=debug`.
     /// Overridden by the `SECRETARY_LOG` environment variable.
     pub log_level: String,
+    /// Folders the Git tracker scans for repositories (`~` allowed), added to
+    /// the ones from the dashboard. Both empty: the home folder (AG-10).
+    pub project_roots: Vec<String>,
 }
 
 impl Default for LocalConfig {
@@ -26,6 +29,7 @@ impl Default for LocalConfig {
         Self {
             server_url: DEFAULT_SERVER_URL.to_owned(),
             log_level: DEFAULT_LOG_LEVEL.to_owned(),
+            project_roots: Vec::new(),
         }
     }
 }

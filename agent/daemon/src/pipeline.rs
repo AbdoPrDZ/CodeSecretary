@@ -80,7 +80,7 @@ impl Pipeline {
         }
         let mut pieces = pieces;
         for piece in &mut pieces {
-            redact::redact(piece);
+            redact::redact_with(piece, active.config.redaction);
             if let Err(reason) = validate::validate(piece, now) {
                 return Outcome::Invalid(reason);
             }
@@ -444,7 +444,10 @@ mod tests {
         .unwrap();
         assert!(corpus.items.len() >= 100);
 
-        let f = fixture(AgentConfig::default());
+        let f = fixture(AgentConfig {
+            redaction: secretary_shared::config::RedactionLevel::Full,
+            ..AgentConfig::default()
+        });
         let at = ts("2026-11-20T09:00:00Z");
         let mut secrets = Vec::new();
         for item in &corpus.items {

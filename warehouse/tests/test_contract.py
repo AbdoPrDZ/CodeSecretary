@@ -34,7 +34,7 @@ def test_agent_config_defaults_match_the_contract_and_schema():
     **agent_config.DEFAULTS,
   }
   assert agent_config.DEFAULTS == {
-    'upload_interval_secs': 60, 'upload_max_events': 500, 'heartbeat_interval_secs': 60,
+    'redaction': 'secrets', 'upload_interval_secs': 60, 'upload_max_events': 500, 'heartbeat_interval_secs': 60,
     'buffer_max_age_days': 30, 'edit_aggregation_secs': 30,
   }
   contract.validator('agent_config').validate(body)

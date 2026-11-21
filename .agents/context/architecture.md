@@ -75,10 +75,11 @@ Status: implemented (AG-1 skeleton, AG-2/3/5/7; AG-4, AG-6 and AG-8 in progress)
 - Every long-running component is started through the `Supervisor` with a `CancellationToken`. On a stop signal (SIGINT/TERM/HUP, or Windows console close/logoff/shutdown) all tokens are cancelled. Components get a 4 s grace period, then they are aborted.
 - Stable exit codes: 0 ok, 1 failure, 2 config, 3 already running.
 - **Components (`run`):**
-  - `presence`: a blocking thread polling idle time every 5 s; it emits intervals into the pipeline.
+  - `presence`: a blocking thread ticking every 1 s. It samples idle time for presence intervals every 5 s, and the foreground window every tick for `window.focus` intervals (AG-9); both go into the pipeline.
   - `pipeline` (not a task): validate → exclusions → pause windows → redact → validate → buffer. Every collector goes through it; nothing else writes to the buffer.
   - `config`: `GET /v1/agent/config` every 5 min with the cached `ETag`.
   - `pause`: checks local time every 5 s and emits `agent.pause` / `agent.resume` at pause-window edges.
+  - `git`: finds repositories under the project roots and polls each reflog every 5 s; new entries become `git.commit` / `git.checkout` / `git.merge` (no `git` process, no history). Roots: `agent.toml` `project_roots` plus the dashboard's, else the home folder.
   - `status`: writes `<data>/status.json` every 5 s, from a `StatusBoard` the other components update. The format is `secretary_shared::local`.
 - **Status panel** (`agent/panel`, `secretary-panel`): a separate egui process that only reads `status.json`, so the daemon has no local server for it.
   - `uploader`: buffer → `POST /v1/events:batch`.

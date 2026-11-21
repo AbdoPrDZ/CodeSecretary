@@ -1,8 +1,17 @@
-//! Redaction (SHARED plan §4.2, SH-5): runs in the agent before an event is
-//! buffered, so secrets never touch disk or leave the device.
+//! Redaction (SHARED plan §4.2, SH-5; levels: D18): runs in the agent before
+//! an event is buffered.
 //!
-//! [`redact`] applies the default rules to every free-text field of an
-//! event:
+//! [`redact_with`] applies one [`RedactionLevel`]:
+//!
+//! - `secrets` (default): credentials only ([`mask_credentials`]) in free
+//!   text; paths, titles, URLs and e-mail addresses are sent as collected.
+//! - `none`: nothing is masked.
+//! - `full`: the rules below ([`redact`]).
+//!
+//! Git remotes are normalized to `host/owner/repo` at every level: it is the
+//! project-matching key, and it drops credentials embedded in the URL.
+//!
+//! The `full` rules, per field:
 //!
 //! - **Window titles:** secrets and e-mail addresses masked, URLs stripped
 //!   ([`strip_url`]), truncated to [`MAX_TITLE`] characters.
@@ -21,8 +30,9 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
-pub use self::patterns::{EMAIL_MASK, MASK, mask_emails, mask_secrets};
+pub use self::patterns::{EMAIL_MASK, MASK, mask_credentials, mask_emails, mask_secrets};
 pub use self::url::{ID, normalize_remote, strip_url};
+pub use crate::config::RedactionLevel;
 use crate::event::{Event, Payload};
 
 /// Window titles are cut to this many characters (after masking).
@@ -32,7 +42,57 @@ static URL_IN_TEXT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(?i)\b(?:https?|wss?|ftp)://[^\s<>"'`]+"#).expect("valid URL pattern")
 });
 
-/// Applies every default rule to `event` in place.
+/// Applies `level` to `event` in place.
+pub fn redact_with(event: &mut Event, level: RedactionLevel) {
+    match level {
+        RedactionLevel::Full => redact(event),
+        RedactionLevel::Secrets => apply_to_text(event, &mask_credentials),
+        RedactionLevel::None => apply_to_text(event, &|s: &str| s.to_owned()),
+    }
+}
+
+/// Runs `mask` over the free-text fields (titles, app names, branches,
+/// hints). Paths are left as collected; remotes are normalized.
+fn apply_to_text(event: &mut Event, mask: &dyn Fn(&str) -> String) {
+    let text = |v: &mut Option<String>| {
+        if let Some(s) = v {
+            *s = mask(s);
+        }
+    };
+    text(&mut event.project_hint);
+    if let Some(repository) = &mut event.repository {
+        remote_opt(&mut repository.remote_url);
+    }
+    match &mut event.payload {
+        Payload::WindowFocus(m) => {
+            text(&mut m.app);
+            text(&mut m.title);
+        }
+        Payload::EditorWorkspaceOpen(m) => remote_opt(&mut m.remote_url),
+        Payload::EditorDebugSession(m) => text(&mut m.configuration_name),
+        Payload::GitCommit(m) => {
+            text(&mut m.branch);
+            remote_opt(&mut m.remote_url);
+        }
+        Payload::GitCheckout(m) => {
+            text(&mut m.from_branch);
+            text(&mut m.to_branch);
+        }
+        Payload::GitMerge(m) => text(&mut m.branch),
+        Payload::GitBackfillCommit(m) => text(&mut m.branch),
+        Payload::EditorFileFocus(_)
+        | Payload::EditorEditBurst(_)
+        | Payload::EditorSave(_)
+        | Payload::PresenceActive(_)
+        | Payload::PresenceIdle(_)
+        | Payload::AgentHeartbeat(_)
+        | Payload::AgentPause(_)
+        | Payload::AgentResume(_)
+        | Payload::AgentBufferOverflow(_) => {}
+    }
+}
+
+/// The `full` level: every rule, every field.
 pub fn redact(event: &mut Event) {
     redact_opt(&mut event.project_hint);
     redact_opt(&mut event.working_directory);

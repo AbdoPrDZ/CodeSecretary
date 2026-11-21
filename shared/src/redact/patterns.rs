@@ -109,10 +109,22 @@ static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b").expect("valid e-mail pattern")
 });
 
-/// Masks every secret pattern in `text`.
+/// Masks every secret pattern in `text`, including the generic
+/// high-entropy rule (the `full` level).
 pub fn mask_secrets(text: &str) -> String {
+    apply(text, &RULES)
+}
+
+/// Masks credentials only: every specific pattern (keys, tokens, passwords,
+/// private keys, URL user:password) but not the generic high-entropy rule,
+/// so ids, hashes and folder names stay (the `secrets` level, D18).
+pub fn mask_credentials(text: &str) -> String {
+    apply(text, &RULES[..RULES.len() - 1])
+}
+
+fn apply(text: &str, rules: &[Rule]) -> String {
     let mut out = text.to_owned();
-    for rule in RULES.iter() {
+    for rule in rules {
         if !rule.regex.is_match(&out) {
             continue;
         }

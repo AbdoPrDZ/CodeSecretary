@@ -146,3 +146,4 @@
 | 2026-11-20 | M1: contract generation (SH-9): JSON Schemas + constants for the warehouse, TypeScript types, CI staleness check; warehouse validates event shape against the generated schema |
 | 2026-11-20 | VPS test deployment (`deploy/vps/`): warehouse image built locally and loaded over SSH; Keycloak + warehouse behind Caddy (HTTPS by IP, private CA) on the server's existing Postgres `it-pg-db`; `pre.sql` no longer needs CREATEROLE when `secretary_app` exists |
 | 2026-11-20 | Overview first slice: `overview/api` + `overview/web`, Keycloak sign-in with server-side sessions (`web_sessions`), devices, raw activity timeline, exclusions and pause windows (OV-1, OV-3 done; OV-2, OV-4, OV-5, OV-12 in progress) |
+| 2026-11-21 | Decision D17: projects created by the user, bound to evidence by rules (match preview); repo detection only suggests. Order agreed: Git tracker (AG-10), focus collector (AG-9), projects and rules UI (OV-5), engine (M3) |

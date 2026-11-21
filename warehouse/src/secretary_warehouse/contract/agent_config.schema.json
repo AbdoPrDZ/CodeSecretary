@@ -58,6 +58,26 @@
         "end"
       ],
       "type": "object"
+    },
+    "RedactionLevel": {
+      "description": "How much the agent masks before buffering (D18). Never collected at any\nlevel: file contents, keystrokes, clipboard, screenshots.",
+      "oneOf": [
+        {
+          "const": "secrets",
+          "description": "Credentials only (keys, tokens, passwords, private keys, URL\nuser:password); everything else as collected.",
+          "type": "string"
+        },
+        {
+          "const": "none",
+          "description": "Nothing masked (remotes are still normalized).",
+          "type": "string"
+        },
+        {
+          "const": "full",
+          "description": "Every SH-5 rule: titles cut and stripped of URLs and e-mails, paths\nand free text masked for high-entropy strings too.",
+          "type": "string"
+        }
+      ]
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -104,6 +124,11 @@
         "type": "string"
       },
       "type": "array"
+    },
+    "redaction": {
+      "$ref": "#/$defs/RedactionLevel",
+      "default": "secrets",
+      "description": "What the agent masks before buffering (D18)."
     },
     "redaction_version": {
       "default": 1,

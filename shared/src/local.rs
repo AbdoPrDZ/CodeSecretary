@@ -34,6 +34,7 @@ pub struct AgentStatus {
     pub heartbeat: HeartbeatStatus,
     pub presence: PresenceStatus,
     pub config: ConfigStatus,
+    pub git: GitStatus,
 }
 
 impl AgentStatus {
@@ -116,6 +117,14 @@ pub struct ConfigStatus {
     pub pause_windows: usize,
     /// Inside a pause window now.
     pub paused: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GitStatus {
+    /// Repositories found under the project roots and watched.
+    pub repositories: usize,
+    pub last_event_at: Option<DateTime<Utc>>,
 }
 
 #[cfg(test)]

@@ -12,8 +12,14 @@ File contents · keystroke content · clipboard · screenshots/screen recording 
 
 ## Redaction (in the agent, before buffering)
 
-Status: implemented (SH-5, SH-6; used by the agent pipeline, AG-6). Source: `shared/src/redact/`; corpus `shared/fixtures/redaction-corpus-v1.json`. The terminal rule is Phase 2 (SH-21).
+Status: implemented (SH-5, SH-6; levels D18). Source: `shared/src/redact/`; corpus `shared/fixtures/redaction-corpus-v1.json`. The terminal rule is Phase 2 (SH-21).
 
+- **Level (D18)** comes from the agent config (`redaction`):
+  - `secrets` (default): credentials only. Keys, tokens, JWTs, passwords, private keys and URL user:password are masked; paths, titles, URLs and e-mail addresses are sent as collected.
+  - `none`: nothing masked.
+  - `full`: every rule below.
+- **Remotes** are normalized at every level: they are the project-matching key, and normalizing drops embedded credentials.
+- The rules below are the `full` level.
 - Implemented once in `shared/` and used by the agent (and validated server-side).
 - Terminal: command **name** only by default (e.g., `git push`, `npm run`); arguments are opt-in per project and still secret-masked.
 - URLs: drop query, fragment, userinfo; token-like path segments → `:id`.

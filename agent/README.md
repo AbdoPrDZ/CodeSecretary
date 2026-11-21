@@ -26,7 +26,7 @@ cargo test -p secretary-agent
 
 | Setting | Where |
 |---|---|
-| Bootstrap config | `agent.toml` in the config dir: `server_url` (default `http://localhost:8080`), `log_level` (default `info`) |
+| Bootstrap config | `agent.toml` in the config dir: `server_url` (default `http://localhost:8080`), `log_level` (default `info`), `project_roots` (folders the Git tracker scans, `~` allowed; default: the home folder) |
 | Log level override | `SECRETARY_LOG=debug` |
 | Use a different root for all dirs (dev/tests) | `SECRETARY_HOME=<dir>` → `<dir>/{config,data,logs}` |
 

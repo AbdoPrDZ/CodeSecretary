@@ -410,7 +410,7 @@ def test_agent_config_defaults_etag_and_304(client, test_db):
   assert response.status_code == 200
   assert response.json() == {
     'exclusions': {'paths': [], 'apps': [], 'domains': []},
-    'pause_windows': [], 'project_roots': [], 'redaction_version': 1,
+    'pause_windows': [], 'project_roots': [], 'redaction_version': 1, 'redaction': 'secrets',
     'upload_interval_secs': 60, 'upload_max_events': 500, 'heartbeat_interval_secs': 60,
     'buffer_max_age_days': 30, 'edit_aggregation_secs': 30,
   }

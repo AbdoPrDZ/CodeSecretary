@@ -124,7 +124,11 @@ pause_windows: Array<PauseWindow>,
 /**
  * Directories the Git tracker scans for repositories (AG-10).
  */
-project_roots: Array<string>, redaction_version: number, upload_interval_secs: number, upload_max_events: number, heartbeat_interval_secs: number, buffer_max_age_days: number, edit_aggregation_secs: number, };
+project_roots: Array<string>, redaction_version: number, 
+/**
+ * What the agent masks before buffering (D18).
+ */
+redaction: RedactionLevel, upload_interval_secs: number, upload_max_events: number, heartbeat_interval_secs: number, buffer_max_age_days: number, edit_aggregation_secs: number, };
 
 export type Exclusions = { 
 /**
@@ -147,3 +151,5 @@ export type PauseWindow = { start: string, end: string,
  * or absent means every day.
  */
 days: Array<number>, };
+
+export type RedactionLevel = "secrets" | "none" | "full";

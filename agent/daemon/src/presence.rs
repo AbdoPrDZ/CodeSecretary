@@ -26,12 +26,15 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
 use crate::buffer::agent_source;
+use crate::focus::FocusTracker;
 use crate::pipeline::Pipeline;
 use crate::platform::Platform;
 use crate::probe::{Presence, classify};
 use crate::status::StatusBoard;
 
 pub const POLL_EVERY: Duration = Duration::from_secs(5);
+/// The loop's tick: focus is sampled every tick, presence every `POLL_EVERY`.
+pub const FOCUS_EVERY: Duration = Duration::from_secs(1);
 /// No input for this long counts as idle. The engine applies its own
 /// (longer, configurable) idle threshold on top of these intervals.
 pub const IDLE_AFTER: Duration = Duration::from_secs(60);
@@ -188,23 +191,40 @@ fn collect(pipeline: &Pipeline, status: &StatusBoard, token: &CancellationToken)
         "presence collector started"
     );
     let mut tracker = Tracker::new(POLL_EVERY, IDLE_AFTER, MAX_INTERVAL);
+    // Focus (AG-9) shares this thread and OS connection, sampled every second.
+    let mut focus = FocusTracker::new(IDLE_AFTER);
+    let titles = platform.titles_available();
     let mut last_error: Option<String> = None;
+    let ticks_per_poll = (POLL_EVERY.as_secs() / FOCUS_EVERY.as_secs()).max(1);
+    let mut tick: u64 = 0;
 
     while !token.is_cancelled() {
+        let now = Utc::now();
         match platform.idle_time() {
             Ok(idle) => {
                 last_error = None;
-                for interval in tracker.observe(Utc::now(), idle) {
+                let window = platform.focused_window().ok().flatten().map(|mut w| {
+                    if !titles {
+                        w.title = None;
+                    }
+                    w
+                });
+                for interval in focus.observe(now, window.as_ref(), idle) {
                     pipeline.submit(interval.into_event());
                 }
-                let current = tracker.current();
-                status.update(|s| {
-                    s.presence.state = current.map(|(p, _)| match p {
-                        Presence::Active => "active".to_owned(),
-                        Presence::Idle => "idle".to_owned(),
+                if tick.is_multiple_of(ticks_per_poll) {
+                    for interval in tracker.observe(now, idle) {
+                        pipeline.submit(interval.into_event());
+                    }
+                    let current = tracker.current();
+                    status.update(|s| {
+                        s.presence.state = current.map(|(p, _)| match p {
+                            Presence::Active => "active".to_owned(),
+                            Presence::Idle => "idle".to_owned(),
+                        });
+                        s.presence.since = current.map(|(_, since)| since);
                     });
-                    s.presence.since = current.map(|(_, since)| since);
-                });
+                }
             }
             Err(err) => {
                 let kind = err.to_string();
@@ -214,10 +234,15 @@ fn collect(pipeline: &Pipeline, status: &StatusBoard, token: &CancellationToken)
                 }
             }
         }
-        sleep_unless_cancelled(token, POLL_EVERY);
+        tick += 1;
+        sleep_unless_cancelled(token, FOCUS_EVERY);
     }
 
-    if let Some(interval) = tracker.finish(Utc::now()) {
+    let now = Utc::now();
+    if let Some(interval) = focus.finish(now) {
+        pipeline.submit(interval.into_event());
+    }
+    if let Some(interval) = tracker.finish(now) {
         pipeline.submit(interval.into_event());
     }
     debug!("presence collector stopped");
