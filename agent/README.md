@@ -6,7 +6,7 @@ The local agent. It collects activity evidence, redacts it, buffers it, and send
 |---|---|---|
 | `daemon/` | Rust daemon `secretary-agent` | Keycloak sign-in, presence collector, pipeline with exclusions and pause windows, SQLite buffer, uploader, heartbeat, remote config (AG-1–8) |
 | `panel/` | `codesecretary`: desktop widget + tray icon; starts the daemon | Status, sign-in, start/stop (AG-14, part) |
-| `vscode/` | VS Code extension | Planned (AG-13) |
+| `vscode/` | VS Code extension: editor events to the daemon's local API | v1 (AG-13); see [vscode/README.md](vscode/README.md) |
 | `browser/` | Browser extension | Phase 2 |
 | `shell/` | Shell hooks | Phase 2 |
 
@@ -67,6 +67,10 @@ target/release/codesecretary          # .exe on Windows; starts the daemon too
 ```
 
 Building on Linux needs `libgtk-3-dev`, `libayatana-appindicator3-dev`, `libxkbcommon-dev` and `libgl1-mesa-dev` for the window and the tray icon.
+
+### Local API (AG-12)
+
+The daemon listens on `127.0.0.1` on a random port for editor extensions and writes the port plus one token per collector to `<config>/local.json` (current user only; new tokens each start; removed on a clean stop). `POST /local/v1/events` takes `{"events": [...]}` in the shared envelope (at most 500 events, 1 MB) and runs them through the same pipeline as the daemon's own events; `GET /local/v1/status` returns `paused` and the connection state. Requests with an `Origin` header, a non-loopback `Host`, or a missing token are refused. The `vscode` token may send only `editor.*` events with source `vscode@<version>`.
 
 ### Probe (AG-0.1)
 

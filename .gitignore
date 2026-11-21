@@ -18,6 +18,8 @@ out/
 *.tsbuildinfo
 .vite/
 coverage/
+.vscode-test/
+*.vsix
 *.vsix
 
 # ── Playwright / test output ─────────

@@ -1,3 +1,4 @@
-# TypeScript packages (agent/vscode joins with AG-13).
+# TypeScript packages.
 packages:
   - overview/web
+  - agent/vscode

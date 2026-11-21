@@ -39,9 +39,9 @@
   - Acceptance: commits/checkouts appear within 10 s
 - [ ] AG-11 — Git backfill
   - Acceptance: N weeks imported once; idempotent re-run
-- [ ] AG-12 — Local API for extensions
+- [x] AG-12 — Local API for extensions · 2026-11-21 · `local_api.rs` (hyper 1, http1): 127.0.0.1 random port, `<config>/local.json` with port + one 256-bit token per collector (new each start, removed on stop, 0600 on Unix); refuses `Origin` (403), foreign `Host` (403, DNS rebinding), missing/wrong token (401), body > 1 MB (413); `vscode` may send only `editor.*` with source `vscode@…`; events go through the normal pipeline; `GET /local/v1/status` (paused, connection); contract in `shared/src/local.rs` with generated TS types; 3 tests; E2E: curl with `Origin` → 403, without token → 401, file removed on stop
   - Acceptance: rejects missing token and any `Origin` header
-- [ ] AG-13 — VS Code extension v1
+- [x] AG-13 — VS Code extension v1 · 2026-11-21 · `agent/vscode` (TypeScript, no runtime deps): `editor.workspace_open`, `editor.file_focus` (window focused + `WindowState.active`, cut at 5 min, < 2 s dropped), `editor.edit_burst` (change counts per file per 30 s, active editor only), `editor.save`, `editor.debug_session`; paths relative to the Git work tree (worktrees handled) or the workspace folder; only `file:` documents, nothing in `.git/`; in-memory queue kept 5 min while the agent is unreachable; status bar; sidebar panel (activity bar) with agent/account/upload status and sign in (device code shown) / sign out / start / stop agent / tracking switch / open dashboard, reading `status.json` and running `secretary-agent` like the widget; 15 unit tests (node:test) incl. a source guard against text-reading APIs; E2E in a downloaded VS Code (`@vscode/test-electron`, `test:vscode`) against a real agent: workspace_open, file_focus, edit_burst (5 edits), save buffered, remote normalized without its token, no contents; `codesecretary.vsix` builds (26 KB). Not covered by E2E: debug sessions (builder unit-tested only); the panel was checked by rendering its page in Edge with sample states, not clicked inside VS Code
   - Acceptance: all Phase 1 editor events emitted; no file contents ever sent
 - [ ] AG-14 — Tray: status, today total, pause 15 min / 1 h / resume, sign out · 🚧 in progress · 2026-11-21 · `codesecretary` (agent/panel, egui): starts the daemon as a separate background process (no console), floating top-right widget (frameless, semi-transparent, draggable, on top) + tray icon colored by status with menu (show/hide, sign in/out, keep on top, open data folder, start/stop agent, close); sign-in from the widget via `secretary-agent login --json`; `secretary-agent stop` (stop-request file); daemon writes `<data>/status.json` every 5 s; verified on Windows: daemon started by the widget, widget top-right, offline state shown, stop works, ~0 CPU idle, ~120–140 MB RAM (GL driver); left: pause 15 min / 1 h, today total (needs engine + OV-14), macOS/Linux runs (Linux build needs GTK/AppIndicator dev packages)
   - Acceptance: pause stops collection immediately and emits `agent.pause`
@@ -101,4 +101,10 @@
   - **History is not reported:** a newly found repository starts at the end of its reflog; past commits are backfill (AG-11).
   - **Over-redaction found in E2E:** a UUID-like folder name in a repository root path became `[redacted]` (the generic high-entropy rule in `shared/` redaction). Harmless for privacy, but folder rules (OV-5, D17) would not match such paths. Resolved by D18 (2026-11-21): the default `secrets` level leaves paths as collected; the pipeline uses the configured level.
   - **Not done:** `files_changed` stays empty (it needs a diff, which the reflog doesn't have; `gix` in AG-11 can fill it).
-
+- 2026-11-21 (AG-12/AG-13):
+  - **Local API file in the config dir** (plan §3.4); the extension mirrors `AgentPaths` to find it, including `SECRETARY_HOME`.
+  - **Remote normalization stays in the agent:** the extension sends the raw `.git/config` remote; the pipeline's redaction step strips credentials and normalizes it, as for the Git tracker.
+  - **Outside Git** the workspace folder becomes `repository.root_path` (remote null), so file paths stay relative and folder rules still match.
+  - **Status file types are generated** (`AgentStatus` and parts, ts-rs) for the extension panel; u64/i64 fields are typed `number`.
+  - **No `@vscode/test-electron` in CI yet:** it downloads VS Code (~200 MB) into `.vscode-test/` (git-ignored); run `pnpm --filter codesecretary test:vscode` by hand.
+  - **Remote workspaces** (SSH, WSL, containers) are not reported: `extensionKind: ui`, `file:` only.

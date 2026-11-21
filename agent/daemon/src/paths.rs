@@ -77,6 +77,12 @@ impl AgentPaths {
         self.data_dir.join(secretary_shared::local::STATUS_FILE)
     }
 
+    /// Local API port and per-collector tokens (AG-12), for extensions.
+    pub fn local_api_file(&self) -> PathBuf {
+        self.config_dir
+            .join(secretary_shared::local::LOCAL_API_FILE)
+    }
+
     /// Last `AgentConfig` fetched from the warehouse, with its `ETag` (AG-7).
     pub fn agent_config_file(&self) -> PathBuf {
         self.data_dir.join("agent_config.json")

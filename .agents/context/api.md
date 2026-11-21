@@ -1,12 +1,12 @@
 # APIs
 
-Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); user API partly implemented (sign-in, devices, activity, exclusions, projects and rules); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `overview/api/src/secretary_overview/`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
+Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); local agent API implemented (AG-12); user API partly implemented (sign-in, devices, activity, exclusions, projects and rules); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `overview/api/src/secretary_overview/`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
 
 ## Surfaces
 
 | Surface | Host | Callers | Auth |
 |---|---|---|---|
-| **Local agent API** (`/local/v1/*`) | agent, `127.0.0.1` random port | VS Code ext, shell hooks | Per-collector bearer token from a user-only file; requests with an `Origin` header rejected |
+| **Local agent API** (`/local/v1/events`, `/local/v1/status`) | agent, `127.0.0.1` random port (`agent/daemon/src/local_api.rs`, contract `shared/src/local.rs`) | VS Code ext; shell hooks later | Per-collector bearer token from `<config>/local.json` (user-only, new each start, removed on stop); `Origin` header or a non-loopback `Host` refused; a collector may send only its own event types with its own `source` name; events go through the normal agent pipeline |
 | **Native Messaging** (Phase 2) | agent | Browser extension | Browser-managed host registration |
 | **Identity** (OIDC endpoints) | Keycloak, realm `secretary` | agent, overview | Agent: device authorization grant (`secretary-agent`, public client, offline token). Dashboard: auth code + PKCE |
 | **Device API** (`/v1/auth/config`, `/v1/devices`, `/v1/events:batch`, `/v1/agent/*`) | warehouse | agent only | Keycloak access token (`aud` `secretary-warehouse`, `azp` `secretary-agent`); its `sid` must map to a registered, unrevoked device |

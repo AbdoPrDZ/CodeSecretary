@@ -17,7 +17,7 @@
 | Phase 0 — Validation | In progress | presence/focus probe (AG-0.1) verified on Windows |
 | M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done, `shared` crate in (SH-1 awaiting CI); engine/overview M0 pending |
 | M1 — Event pipeline end-to-end | In progress | demo works on Windows: agent signs in via Keycloak, uploads heartbeats + presence events (AG-2/3/5/6/7, WH-4/5/8/9, SH-2–6/8 done; AG-4 1 h offline run, WH-6/7/10/11, SH-7, SH-9 (awaits CI), OV M1 left) |
-| M2 — Phase 1 collectors | Not started | — |
+| M2 — Phase 1 collectors | In progress | Presence, focus, Git tracker, local API, VS Code extension built; AG-8/AG-9 OS checks and AG-11 backfill left |
 | M3 — Engine v1 | Not started | — |
 | M4 — Dashboard v1 | Not started | — |
 | M5 — Hardening & validation | Not started | — |
@@ -42,7 +42,7 @@
 
 ### M0 — Foundations
 - [ ] Root Cargo workspace (`shared`, `agent/daemon`, `engine`) — shared + agent in; engine pending. Python packages: `orm`, `warehouse` (overview/api later, D15)
-- [ ] pnpm workspace (`agent/vscode`, `overview/web`) — `overview/web` in (2026-11-20); `agent/vscode` with AG-13
+- [x] pnpm workspace (`agent/vscode`, `overview/web`) · 2026-11-21 · `overview/web` in (2026-11-20); `agent/vscode` joined with AG-13
 - [ ] `docker-compose.yml` (Postgres 16, Keycloak, object storage, warehouse, engine, overview) — Postgres, Keycloak, warehouse, overview in
 - [ ] CI: fmt, clippy, tests, TS lint/test, web build
 - [ ] SHARED M0 tasks done

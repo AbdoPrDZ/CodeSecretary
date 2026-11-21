@@ -8,8 +8,9 @@
 //!   types, limits, reason/error codes and defaults, so Python never repeats
 //!   them by hand.
 //! - `shared/bindings/ts/contract.ts`, copied to
-//!   `overview/web/src/generated/contract.ts`: TypeScript types for the VS Code
-//!   extension and the web app.
+//!   `overview/web/src/generated/contract.ts` and
+//!   `agent/vscode/src/generated/contract.ts`: TypeScript types for the web
+//!   app and the VS Code extension.
 //!
 //! Regenerate after changing a contract type:
 //!
@@ -47,7 +48,12 @@ pub fn files() -> Vec<(PathBuf, String)> {
     let ts = typescript();
     out.push((PathBuf::from("shared/bindings/ts/contract.ts"), ts.clone()));
     // The dashboard imports its copy from its own tree (Vite bundles only inside it).
-    out.push((PathBuf::from("overview/web/src/generated/contract.ts"), ts));
+    out.push((
+        PathBuf::from("overview/web/src/generated/contract.ts"),
+        ts.clone(),
+    ));
+    // The VS Code extension (AG-13) compiles only its own tree, too.
+    out.push((PathBuf::from("agent/vscode/src/generated/contract.ts"), ts));
     out
 }
 
@@ -167,6 +173,21 @@ fn typescript() -> String {
         config::Exclusions,
         config::PauseWindow,
         config::RedactionLevel,
+        crate::local::LocalApiFile,
+        crate::local::LocalEvents,
+        crate::local::LocalEventsResponse,
+        crate::local::LocalRejection,
+        crate::local::LocalAgentState,
+        crate::local::ConnectionState,
+        crate::local::AgentStatus,
+        crate::local::StatusAccount,
+        crate::local::ConnectionStatus,
+        crate::local::UploadStatus,
+        crate::local::HeartbeatStatus,
+        crate::local::PresenceStatus,
+        crate::local::ConfigStatus,
+        crate::local::GitStatus,
+        crate::local::LocalApiStatus,
     ];
     let types = serde_json::to_string(event::EVENT_TYPES).expect("json");
     format!(

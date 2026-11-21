@@ -38,7 +38,8 @@ Raw events, evidence, titles, URLs, commands, personal projects, and unsubmitted
 
 ## Security Rules
 
-- Agent local API: `127.0.0.1`, per-collector token, reject any `Origin` header.
+- Agent local API: `127.0.0.1`, per-collector token, reject any `Origin` header and any `Host` other than the loopback address.
+- VS Code extension: only `file:` documents; paths relative to the Git root (or workspace folder); edit **counts** only. It never reads document text, edits, selections or the clipboard (a unit test guards the source).
 - Agent refresh token in the OS keychain, access token in memory only; revocation is immediate (warehouse checks the device) and ends the Keycloak session. Keycloak holds identity data only (email, name), never activity.
 - TLS everywhere; encryption at rest; application-level encryption of sensitive metadata fields (Phase 2).
 - **Never log event metadata.**

@@ -13,6 +13,7 @@ mod focus;
 mod git;
 mod heartbeat;
 mod instance;
+mod local_api;
 mod logging;
 mod login;
 mod paths;

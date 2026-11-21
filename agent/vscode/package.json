@@ -1,0 +1,147 @@
+{
+  "name": "codesecretary",
+  "displayName": "CodeSecretary",
+  "description": "Sends editor activity (which file, edit counts, saves, debug sessions; never file contents) to the local CodeSecretary agent.",
+  "version": "0.1.0",
+  "publisher": "codesecretary",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "codesecretary.showStatus",
+        "title": "Show Status",
+        "category": "CodeSecretary",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "codesecretary.signIn",
+        "title": "Sign In",
+        "category": "CodeSecretary",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "codesecretary.signOut",
+        "title": "Sign Out",
+        "category": "CodeSecretary",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "codesecretary.startAgent",
+        "title": "Start Agent",
+        "category": "CodeSecretary",
+        "icon": "$(play)"
+      },
+      {
+        "command": "codesecretary.stopAgent",
+        "title": "Stop Agent",
+        "category": "CodeSecretary",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "codesecretary.toggleTracking",
+        "title": "Toggle Editor Tracking",
+        "category": "CodeSecretary"
+      },
+      {
+        "command": "codesecretary.openDashboard",
+        "title": "Open Dashboard",
+        "category": "CodeSecretary",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "codesecretary.cancelSignIn",
+        "title": "Cancel Sign In",
+        "category": "CodeSecretary"
+      }
+    ],
+    "configuration": {
+      "title": "CodeSecretary",
+      "properties": {
+        "codesecretary.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send editor activity to the local CodeSecretary agent."
+        },
+        "codesecretary.agentPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Path to the secretary-agent program. Empty: look it up on PATH."
+        },
+        "codesecretary.dashboardUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Address of the CodeSecretary dashboard, for the \"Open dashboard\" button."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codesecretary",
+          "title": "CodeSecretary",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "codesecretary": [
+        {
+          "type": "webview",
+          "id": "codesecretary.panel",
+          "name": "Status",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "codesecretary.openDashboard",
+          "when": "view == codesecretary.panel",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "codesecretary.cancelSignIn",
+          "when": "false"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "tsc -p . && node --test \"out/test/**/*.test.js\"",
+    "test:vscode": "tsc -p . && node out/test/vscode/run.js",
+    "package": "tsc -p . && vsce package --no-dependencies --skip-license --allow-missing-repository -o codesecretary.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.100.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.1.1",
+    "typescript": "5.9.3"
+  }
+}

@@ -153,3 +153,86 @@ export type PauseWindow = { start: string, end: string,
 days: Array<number>, };
 
 export type RedactionLevel = "secrets" | "none" | "full";
+
+export type LocalApiFile = { version: string, pid: number, port: number, 
+/**
+ * Collector name to bearer token.
+ */
+tokens: { [key in string]?: string }, written_at: string | null, };
+
+export type LocalEvents = { events: Event[], };
+
+export type LocalEventsResponse = { 
+/**
+ * Taken by the agent. Excluded or paused events count here too: the
+ * client must not retry them.
+ */
+accepted: number, rejected: Array<LocalRejection>, };
+
+export type LocalRejection = { 
+/**
+ * Position in the request's `events`.
+ */
+index: number, 
+/**
+ * A `validate` reason code, `forbidden_event_type` or `source_mismatch`.
+ */
+reason: string, };
+
+export type LocalAgentState = { version: string, 
+/**
+ * Inside a pause window: events are dropped.
+ */
+paused: boolean, connection: ConnectionState, };
+
+export type ConnectionState = "unknown" | "online" | "offline" | "signed_out";
+
+export type AgentStatus = { version: string, pid: number, started_at: string | null, written_at: string | null, 
+/**
+ * False in the last write before a clean shutdown.
+ */
+running: boolean, account: StatusAccount | null, connection: ConnectionStatus, upload: UploadStatus, heartbeat: HeartbeatStatus, presence: PresenceStatus, config: ConfigStatus, git: GitStatus, local_api: LocalApiStatus, };
+
+export type StatusAccount = { email: string | null, server_url: string, device_id: number | null, };
+
+export type ConnectionStatus = { state: ConnectionState, last_ok_at: string | null, last_error_at: string | null, 
+/**
+ * Short kind, e.g. `unreachable`, `HTTP 503`, `refused: device_revoked`.
+ */
+last_error: string | null, };
+
+export type UploadStatus = { 
+/**
+ * Events waiting in the local buffer.
+ */
+queued: number, oldest_queued_at: string | null, last_upload_at: string | null, last_upload_events: number, uploaded_since_start: number, };
+
+export type HeartbeatStatus = { last_at: string | null, 
+/**
+ * Device clock minus server clock.
+ */
+clock_offset_ms: number, };
+
+export type PresenceStatus = { 
+/**
+ * `active`, `idle`, or `None` when the collector is unavailable.
+ */
+state: string | null, since: string | null, collector_available: boolean, };
+
+export type ConfigStatus = { fetched_at: string | null, path_exclusions: number, app_exclusions: number, domain_exclusions: number, pause_windows: number, 
+/**
+ * Inside a pause window now.
+ */
+paused: boolean, };
+
+export type GitStatus = { 
+/**
+ * Repositories found under the project roots and watched.
+ */
+repositories: number, last_event_at: string | null, };
+
+export type LocalApiStatus = { listening: boolean, 
+/**
+ * Events accepted from extensions since the daemon started.
+ */
+events_since_start: number, last_event_at: string | null, };

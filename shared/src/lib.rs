@@ -9,7 +9,7 @@
 //! - [`redact`]: secret masking, URL stripping, remote normalization (SH-5, SH-6).
 //! - [`config`]: `AgentConfig` (exclusions, pause windows) and the Appendix A defaults (SH-8).
 //! - [`rules`]: project mapping rules: pattern normalization, matching, resolution (D17).
-//! - [`local`]: the daemon's status file for the status panel (AG-14).
+//! - [`local`]: the daemon's status file (AG-14) and local API for extensions (AG-12).
 //! - [`api`]: request/response bodies of the warehouse device API
 //!   (blueprint Appendix C).
 //!

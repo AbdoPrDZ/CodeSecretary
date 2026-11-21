@@ -12,6 +12,7 @@ use crate::auth::store::KeyringStore;
 use crate::buffer::Buffer;
 use crate::config::LocalConfig;
 use crate::heartbeat::{ClockOffset, HEARTBEAT_EVERY, HeartbeatTask};
+use crate::local_api::LocalApi;
 use crate::paths::AgentPaths;
 use crate::pipeline::Pipeline;
 use crate::remote_config::{CONFIG_REFRESH, ConfigCache, ConfigTask, PAUSE_CHECK, PauseWatch};
@@ -91,6 +92,14 @@ pub async fn run(paths: AgentPaths, config: LocalConfig, run_for: Option<Duratio
             };
             git::run(pipeline, status, state_file, roots, token)
         }
+    });
+    supervisor.spawn("local_api", {
+        let api = LocalApi {
+            pipeline: pipeline.clone(),
+            status: status.clone(),
+            file: paths.local_api_file(),
+        };
+        move |token| api.run(token)
     });
     supervisor.spawn("presence", move |token| {
         presence::run(pipeline, status, token)
