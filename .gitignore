@@ -66,3 +66,6 @@ desktop.ini
 # VPS access and deployment secrets (never commit)
 .ssh.env
 deploy/vps/secrets/
+
+# Local release bundle (programs + VS Code extension)
+/release/
