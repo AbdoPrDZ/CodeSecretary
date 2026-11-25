@@ -316,6 +316,55 @@ def test_batch_is_stored_once_even_when_resent(client, test_db):
   assert all(r['timestamp_start'] - r['server_adjusted_start'] == timedelta(milliseconds=1500) for r in rows)
 
 
+def _jobs(test_db) -> list[dict]:
+  return test_db.admin.execute(
+    """SELECT local_day, reason, status, run_after - created_at AS delay
+       FROM processing_jobs ORDER BY local_day""").fetchall()
+
+
+def _send(client, events) -> None:
+  body, headers = gz(batch(events))
+  response = client.post('/v1/events:batch', content=body, headers={**headers, **auth(mint())})
+  assert response.status_code == 200, response.text
+
+
+def test_ingest_queues_one_debounced_job_per_day(client, test_db):
+  """WH-7: 100 batches in a minute -> one queued job per affected local day."""
+
+  register(client)
+  for _ in range(100):
+    _send(client, [event()])
+  jobs = _jobs(test_db)
+  today = datetime.now(UTC).date()
+  # The engine's 1 h margin can reach into the neighbouring day near midnight.
+  assert today in {j['local_day'] for j in jobs}
+  assert len(jobs) <= 2 and len({j['local_day'] for j in jobs}) == len(jobs)
+  assert all(j['reason'] == 'ingest' and j['status'] == 'queued' for j in jobs)
+  assert all(timedelta(minutes=1) < j['delay'] <= timedelta(minutes=3) for j in jobs)
+
+
+def test_ingest_jobs_follow_time_zone_and_skip_non_inputs(client, test_db):
+  register(client)
+  test_db.admin.execute("UPDATE users SET time_zone = 'Asia/Tokyo'")
+  # Heartbeat-only and resent batches change no calculation input.
+  _send(client, [event(event_type='agent.heartbeat', timestamp_end=None,
+                       metadata={'agent_version': '0.1.0', 'queue_depth': 0, 'clock_offset_ms': 0})])
+  assert _jobs(test_db) == []
+
+  # 12:00 UTC is 21:00 in Tokyo: the day plus the 1 h margin stays on one local day.
+  noon = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(days=1)
+  stamp = lambda t: t.isoformat().replace('+00:00', 'Z')  # noqa: E731
+  e = event(timestamp_start=stamp(noon), timestamp_end=stamp(noon + timedelta(minutes=5)))
+  _send(client, [e])
+  _send(client, [e])  # duplicate
+  assert [j['local_day'] for j in _jobs(test_db)] == [noon.date()]
+
+  # 14:30 UTC is 23:30 in Tokyo: the margin reaches the next local day too.
+  late = noon + timedelta(hours=2, minutes=30)
+  _send(client, [event(timestamp_start=stamp(late), timestamp_end=stamp(late + timedelta(minutes=5)))])
+  assert [j['local_day'] for j in _jobs(test_db)] == [noon.date(), noon.date() + timedelta(days=1)]
+
+
 def test_invalid_events_are_rejected_individually(client, test_db):
   register(client)
   good = event()

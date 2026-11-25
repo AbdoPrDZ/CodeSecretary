@@ -7,9 +7,9 @@
 2. Keeps, in `deploy/vps/secrets/` (git-ignored): `.env.deploy` with the
    deploy-owned values (public IP, image tag, Keycloak admin password, the
    RLS-bound app login's password) and a private CA + server certificate.
-3. Builds `secretary-warehouse:<git sha>` and `secretary-overview:<git sha>`
-   locally and streams them into `docker load` on the VPS. Keycloak and Caddy
-   are pulled by the VPS.
+3. Builds `secretary-warehouse:<git sha>`, `secretary-overview:<git sha>`
+   and `secretary-engine:<git sha>` locally and streams them into
+   `docker load` on the VPS. Keycloak and Caddy are pulled by the VPS.
 4. Database settings are the server owner's `DIR/.env.docker`
    (`SECRETARY_WH_DB_*`, `SECRETARY_KC_DB_*`); the databases and their owner
    logins are created by the server owner. Read on the VPS only, the deploy
@@ -97,6 +97,7 @@ def ensure_deploy_env(ip: str, tag: str) -> Path:
   values['PUBLIC_IP'] = ip
   values['WAREHOUSE_TAG'] = tag
   values['OVERVIEW_TAG'] = tag
+  values['ENGINE_TAG'] = tag
   path.write_text('# Deploy-owned values (deploy/vps/deploy.py). Database settings: .env.docker\n'
                   + ''.join(f'{k}={v}\n' for k, v in values.items()), encoding='utf-8')
   return path
@@ -173,15 +174,15 @@ def main() -> int:
     sys.exit('DIR in .ssh.env must be a folder under /opt/ without spaces')
   SECRETS.mkdir(exist_ok=True)
   tag = sh('git', 'rev-parse', '--short', 'HEAD')
-  if sh('git', 'status', '--porcelain', '--', 'warehouse', 'orm'):
+  if sh('git', 'status', '--porcelain', '--', 'warehouse', 'orm', 'overview', 'engine', 'shared'):
     tag += '-dirty'
 
   step('certificates')
   subprocess.run([sys.executable, str(HERE / 'make_certs.py'), ip, str(SECRETS / 'certs')], check=True)
   deploy_env = ensure_deploy_env(ip, tag)
 
-  images = [f'secretary-warehouse:{tag}', f'secretary-overview:{tag}']
-  for image, dockerfile in zip(images, ['warehouse/Dockerfile', 'overview/Dockerfile']):
+  images = [f'secretary-warehouse:{tag}', f'secretary-overview:{tag}', f'secretary-engine:{tag}']
+  for image, dockerfile in zip(images, ['warehouse/Dockerfile', 'overview/Dockerfile', 'engine/Dockerfile']):
     step(f'building {image}')
     subprocess.run(['docker', 'build', '-q', '-f', dockerfile, '-t', image, '.'], cwd=ROOT, check=True)
   with tempfile.TemporaryDirectory() as tmp:

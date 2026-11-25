@@ -1,0 +1,75 @@
+{
+  "assignments": [
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000003",
+      "project_id": 1,
+      "method": "temporal",
+      "confidence": 0.7,
+      "rule_id": null
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000004",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000005",
+      "project_id": 1,
+      "method": "temporal",
+      "confidence": 0.7,
+      "rule_id": null
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000006",
+      "project_id": 1,
+      "method": "temporal",
+      "confidence": 0.7,
+      "rule_id": null
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000007",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000008",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    }
+  ],
+  "sessions": [
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-20T09:00:00Z",
+      "end": "2026-11-20T09:50:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000003",
+        "019a0000-0000-7000-8000-000000000004",
+        "019a0000-0000-7000-8000-000000000005",
+        "019a0000-0000-7000-8000-000000000006",
+        "019a0000-0000-7000-8000-000000000007",
+        "019a0000-0000-7000-8000-000000000008"
+      ]
+    },
+    {
+      "project_id": null,
+      "kind": "active",
+      "start": "2026-11-20T09:50:00Z",
+      "end": "2026-11-20T09:58:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000009"
+      ]
+    }
+  ]
+}

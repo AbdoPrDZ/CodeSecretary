@@ -1,0 +1,35 @@
+{
+  "assignments": [
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000021",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    }
+  ],
+  "sessions": [
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-19T23:00:00Z",
+      "end": "2026-11-19T23:30:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000019"
+      ]
+    },
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-20T22:40:00Z",
+      "end": "2026-11-20T23:00:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000021"
+      ]
+    }
+  ]
+}

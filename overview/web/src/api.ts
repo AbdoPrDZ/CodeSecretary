@@ -109,6 +109,61 @@ export interface RepositorySuggestion {
   last_seen: string | null;
 }
 
+/** Engine queue state for the requested days ("recalculating"). */
+export interface JobState {
+  pending_days: number;
+  failed_days: number;
+  calculated_at: string | null;
+}
+
+export interface ProjectTime {
+  project_id: number;
+  name: string | null;
+  color: string | null;
+  archived: boolean;
+  seconds: number;
+  sessions: number;
+  days: number;
+}
+
+/** Totals the API adds up from the engine's sessions (display only here). */
+export interface TimeSummary extends JobState {
+  start: string;
+  end: string;
+  time_zone: string;
+  total_seconds: number;
+  assigned_seconds: number;
+  unassigned_seconds: number;
+  projects: ProjectTime[];
+  days: {
+    day: string;
+    total_seconds: number;
+    unassigned_seconds: number;
+    projects: { project_id: number; seconds: number }[];
+  }[];
+}
+
+export interface WorkSession {
+  id: number;
+  project_id: number | null;
+  project_name: string | null;
+  project_color: string | null;
+  kind: 'active' | 'waiting';
+  start: string;
+  end: string;
+  seconds: number;
+  low_confidence: boolean;
+  estimated: boolean;
+  evidence: number;
+}
+
+export interface DaySessions extends JobState {
+  day: string;
+  time_zone: string;
+  range: { start: string; end: string };
+  sessions: WorkSession[];
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -148,6 +203,10 @@ export const api = {
     csrfToken = me.csrf_token;
     return me;
   },
+  setTimeZone: (time_zone: string) => request<{ time_zone: string }>('PUT', '/api/me/time_zone', { time_zone }),
+  time: (start: string, end: string) =>
+    request<TimeSummary>('GET', `/api/time?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
+  sessions: (day: string) => request<DaySessions>('GET', `/api/sessions?day=${encodeURIComponent(day)}`),
   devices: () => request<{ devices: Device[] }>('GET', '/api/devices').then((r) => r.devices),
   renameDevice: (id: number, name: string) => request('PATCH', `/api/devices/${id}`, { name }),
   revokeDevice: (id: number) => request('POST', `/api/devices/${id}/revoke`),

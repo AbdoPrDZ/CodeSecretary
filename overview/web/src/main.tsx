@@ -14,6 +14,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+      // Refetch on focus only when the data is older than this (a day of
+      // activity is large; pages that need fresher data poll on their own).
+      staleTime: 30_000,
       refetchOnWindowFocus: true,
     },
   },

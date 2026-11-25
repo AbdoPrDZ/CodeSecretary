@@ -1,6 +1,6 @@
 # APIs
 
-Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); local agent API implemented (AG-12); user API partly implemented (sign-in, devices, activity, exclusions, projects and rules); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `overview/api/src/secretary_overview/`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
+Status: device API implemented (auth config, devices, batch ingest, heartbeat, agent config); local agent API implemented (AG-12); user API partly implemented (sign-in, devices, activity, exclusions, projects and rules, time per project, time zone); other surfaces planned. Source: `warehouse/src/secretary_warehouse/{http,auth,ingest,agent_config}.py`, `overview/api/src/secretary_overview/`, `shared/src/{api,config,validate}.rs`; blueprint Appendix C; [WAREHOUSE plan](../plans/WAREHOUSE.md) §4; [AGENT plan](../plans/AGENT.md) §3.4; [OVERVIEW plan](../plans/OVERVIEW.md) §3.
 
 ## Surfaces
 
@@ -37,7 +37,7 @@ Status: implemented (WH-4, WH-5, WH-8, WH-9). Source: `warehouse/src/secretary_w
 
 ## User API Behaviour
 
-Status: implemented for the first slice (OV-1–5, OV-12 data view). Source: `overview/api/src/secretary_overview/`; route list in `overview/README.md`.
+Status: implemented for the first slice (OV-1–5, OV-12 data view, OV-7 time per project, OV-13 time zone). Source: `overview/api/src/secretary_overview/`; route list in `overview/README.md`.
 
 - **Sign-in:** `/auth/login` → Keycloak (confidential `secretary-dashboard`, auth code + PKCE) → `/auth/callback`.
   - State, nonce and the PKCE verifier sit in a 10-minute HMAC-signed cookie.
@@ -50,6 +50,11 @@ Status: implemented for the first slice (OV-1–5, OV-12 data view). Source: `ov
 - **Mutations** need `X-CSRF-Token` (from `GET /api/me`) and, when present, a same-origin `Origin`. Unknown body fields → 400.
 - **Errors** are `{"error": code}`: 401 `signed_out`, 403 `bad_csrf` / `bad_origin`, 404 `not_found` (also for another user's ids), 400 `invalid_*`.
 - **Activity** returns raw events of a local day (`day` + IANA `tz`), at most 5,000, with no totals: time is the engine's.
+- **Time** (`/api/time`, `/api/sessions`) only reads `work_sessions` and adds up their lengths per project and day (reporting). It never derives time from events.
+  - Days are the user's `time_zone` local days. Ranges are at most 92 days.
+  - Each response carries the user's engine queue state (`pending_days`, `failed_days`), read from `processing_jobs`, which has no RLS, so it is filtered by the session user explicitly.
+- **Time zone** (`PUT /api/me/time_zone`): the zone the engine cuts days in. A change queues the last 30 days.
+- **Performance:** responses over 1 KB are gzip-compressed. The session lookup is one transaction and writes `last_seen_at` at most every 5 min.
 - **Projects and rules (D17):** projects are created in the personal workspace; rules are personal (`project_mappings.user_id` = the user), shared team rules come with Phase 3.
   - Rule semantics live in `shared/src/rules.rs` (used by the engine); the API has a Python copy for the preview. Both are tested against `shared/fixtures/rule-match-v1.json`: change the semantics only there and in both copies.
   - The preview (a POST, so it needs the CSRF token) counts events, not time, and reports conflicts with other projects' rules.

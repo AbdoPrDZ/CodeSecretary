@@ -126,6 +126,40 @@ BEGIN
 END
 $$;
 
+-- Engine startup (EN-14): queue every (user, local day) of the last `p_days`
+-- that has activity but no sessions from algorithm `p_version` or later, i.e.
+-- days never calculated and days calculated by an older algorithm. The engine
+-- cannot list users or events itself (RLS), and this returns only a count.
+CREATE OR REPLACE FUNCTION app_enqueue_uncalculated_days(p_days integer, p_version integer, p_reason text)
+    RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+AS $$
+DECLARE
+    queued integer;
+BEGIN
+    WITH days AS (
+        SELECT DISTINCT e.user_id,
+               (e.server_adjusted_start AT TIME ZONE u.time_zone)::date AS local_day
+        FROM activity_events e
+        JOIN users u ON u.id = e.user_id
+        WHERE e.server_adjusted_start >= now() - make_interval(days => p_days)
+          -- partition pruning (device time is within minutes of adjusted time)
+          AND e.timestamp_start >= now() - make_interval(days => p_days + 1)
+          AND e.event_type NOT IN ('agent.heartbeat', 'agent.buffer_overflow')
+    )
+    INSERT INTO processing_jobs (user_id, local_day, reason, status, run_after, attempts)
+    SELECT d.user_id, d.local_day, p_reason, 'queued', now(), 0
+    FROM days d
+    WHERE NOT EXISTS (
+        SELECT 1 FROM work_sessions s
+        WHERE s.user_id = d.user_id AND s.local_day = d.local_day AND s.algorithm_version >= p_version
+    )
+    ON CONFLICT (user_id, local_day) WHERE status = 'queued' DO NOTHING;
+    GET DIAGNOSTICS queued = ROW_COUNT;
+    RETURN queued;
+END
+$$;
+
 DO $$
 DECLARE
     fn text;
@@ -134,7 +168,7 @@ BEGIN
         'app_workspace_role(bigint)', 'app_is_member(bigint)', 'app_is_admin(bigint)',
         'app_workspace_has_members(bigint)', 'app_can_view_team_submissions(bigint)',
         'app_resolve_identity(text, text, text, text)', 'app_ensure_event_partitions(integer, integer)',
-        'app_web_session_user(text)'
+        'app_web_session_user(text)', 'app_enqueue_uncalculated_days(integer, integer, text)'
     ] LOOP
         EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO secretary_app', fn);
@@ -163,6 +197,10 @@ CREATE INDEX IF NOT EXISTS audit_log_workspace_time_ix ON audit_log (workspace_i
 CREATE UNIQUE INDEX IF NOT EXISTS processing_jobs_queued_ux
     ON processing_jobs (user_id, local_day) WHERE status = 'queued';
 CREATE INDEX IF NOT EXISTS processing_jobs_ready_ix ON processing_jobs (run_after) WHERE status = 'queued';
+-- At most one running job per (user, day): two engine workers can never
+-- calculate the same day at once (EN-2), even if a claim races.
+CREATE UNIQUE INDEX IF NOT EXISTS processing_jobs_running_ux
+    ON processing_jobs (user_id, local_day) WHERE status = 'running';
 
 -- ---------------------------------------------------------------------------
 -- row-level security (every tenant table; processing_jobs is the system queue)

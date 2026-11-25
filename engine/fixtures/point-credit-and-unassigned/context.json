@@ -1,0 +1,89 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "UTC",
+  "rules": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "signal": "remote",
+      "pattern": "github.com/acme/api",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000032",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T16:00:00Z",
+        "timestamp_end": "2026-11-20T17:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000033",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T16:10:00Z",
+        "timestamp_end": null,
+        "source": "agent@0.1.0",
+        "event_type": "git.commit",
+        "project_hint": null,
+        "repository": {
+          "root_path": null,
+          "remote_url": "github.com/acme/api"
+        },
+        "working_directory": null,
+        "metadata": {
+          "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000034",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T16:11:00Z",
+        "timestamp_end": null,
+        "source": "agent@0.1.0",
+        "event_type": "editor.save",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": "github.com/acme/api"
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/lib.rs"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000035",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T16:20:00Z",
+        "timestamp_end": "2026-11-20T16:50:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "notepad.exe",
+          "title": "notes.txt"
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["shared", "agent/daemon", "agent/panel"]
+members = ["shared", "agent/daemon", "agent/panel", "engine"]
 
 [workspace.package]
 version = "0.1.0"
@@ -33,16 +33,18 @@ schemars = { version = "1", features = ["chrono04", "uuid1"] }
 ts-rs = { version = "11", features = ["chrono-impl", "uuid-impl", "serde-json-impl", "no-serde-warnings"] }
 url = "2"
 
-# Engine (Rust). Warehouse and overview are Python (D15).
+# Engine (Rust). Warehouse and overview are Python (D15). Runtime queries only
+# (no compile-time checked macros: the schema is owned by the warehouse), no migrations.
 sqlx = { version = "0.9", default-features = false, features = [
     "runtime-tokio",
     "tls-rustls",
     "postgres",
-    "macros",
-    "migrate",
     "uuid",
     "json",
+    "chrono",
 ] }
+chrono-tz = "0.10"
+sha2 = "0.11"
 
 # Agent: HTTP, keychain, local buffer
 flate2 = "1"

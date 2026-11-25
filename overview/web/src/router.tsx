@@ -5,6 +5,8 @@ import { ActivityPage } from './pages/Activity';
 import { DevicesPage } from './pages/Devices';
 import { ExclusionsPage } from './pages/Exclusions';
 import { ProjectsPage } from './pages/Projects';
+import { TimePage } from './pages/Time';
+import type { Period } from './period';
 import { isoDay } from './timeline';
 
 const rootRoute = createRootRoute({ component: Layout });
@@ -13,7 +15,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/activity', search: { day: isoDay(new Date()) } });
+    throw redirect({ to: '/time', search: { period: 'day', day: isoDay(new Date()) } });
   },
 });
 
@@ -26,6 +28,19 @@ export const activityRoute = createRoute({
   component: ActivityPage,
 });
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const PERIODS: Period[] = ['day', 'week', 'month'];
+
+export const timeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/time',
+  validateSearch: (search: Record<string, unknown>): { period: Period; day: string } => ({
+    period: PERIODS.includes(search.period as Period) ? (search.period as Period) : 'day',
+    day: typeof search.day === 'string' && DAY.test(search.day) ? search.day : isoDay(new Date()),
+  }),
+  component: TimePage,
+});
+
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage });
 const exclusionsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -36,7 +51,7 @@ const exclusionsRoute = createRoute({
 const projectsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/projects', component: ProjectsPage });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, timeRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
   defaultPreload: 'intent',
 });
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: planned. Source: blueprint §6, §16; [GENERAL plan](../plans/GENERAL.md) §2–4.
+Status: implemented for every service (agent, warehouse, engine v1, overview); the raw archive (object storage), browser/shell collectors and AI are planned. Source: blueprint §6, §16; [GENERAL plan](../plans/GENERAL.md) §2–4.
 
 ## Shape
 
@@ -63,7 +63,20 @@ Status: implemented (OV-1 scaffold, first slice). Source: `overview/`.
 - **One image** (`overview/Dockerfile`): `secretary-overview` (FastAPI) serves the built React app (`STATIC_DIR`) on `:8090`. The same origin means no CORS, and the cookie stays first-party.
 - **Database:** the API imports the warehouse's ORM models and RLS helpers, and never migrates; the warehouse does. It connects as an RLS-bound `secretary_app` member.
 - **Web** (`overview/web`, a pnpm workspace package): React 19, Vite 7, TanStack Router + Query, Tailwind 4. It uses the TypeScript contract generated from `shared/` (`src/generated/contract.ts`).
-- **Pages:** Activity (per-device day timeline of raw events), Devices, Exclusions & pause windows.
+- **Pages:** Time (default: per-project totals for a day, week or month; the day's session timeline; recalculating state; time-zone prompt), Activity (per-device day timeline of raw events; the table renders 300 rows at a time), Projects, Devices, Exclusions & pause windows.
+- **Queries:** default `staleTime` 30 s. The Time page polls every 5 s while days are recalculating.
+
+## Engine Runtime
+
+Status: implemented (EN-1, EN-2, engine v1). Source: `engine/src/`.
+
+- **One binary**, `secretary-engine` (`engine/Dockerfile`, Debian slim). It is configured by env (`DATABASE_URL`, `ENGINE_WORKERS`, …; `config.rs`) and logs JSON with ids and counts only.
+- **Database:** it connects as an RLS-bound `secretary_app` member; Compose reuses the warehouse's login. It never migrates, and uses runtime sqlx queries (no compile-time macros).
+- **Tenancy:** the queue table has no RLS. All data access happens in a transaction with `app.user_id` set to the job's user.
+- **Workers:** N async workers (default 2) plus a reaper (every 60 s). On SIGTERM they stop claiming and get 20 s to finish their current job.
+- **Health:** `:8070` serves `/healthz` and `/readyz` (DB reachable, workers looped within 15 min). It is not published, and the image healthcheck uses bash `/dev/tcp`.
+- **Pure core:** `model` (context, settings, day bounds via `chrono-tz`), `correlate` and `calculate`. Golden fixtures live in `engine/fixtures/` (`gen_fixtures.py` writes the inputs; `SECRETARY_BLESS=1` writes the expected outputs).
+- **Rust version:** sqlx 0.9 needs Rust 1.94, so the engine crate sets its own `rust-version`.
 
 ## Agent Daemon Runtime
 
@@ -99,10 +112,12 @@ Rust (agent, engine, `shared/`; tokio, sqlx) · Python 3.13 (warehouse, overview
 
 ## Deployment Shape
 
-Local dev and self-hosting: one Compose file (Postgres, Keycloak, warehouse, overview now; S3-compatible store (WH-6), engine and overview later). Managed hosting undecided (open decision OD2).
+Local dev and self-hosting: one Compose file (Postgres, Keycloak, warehouse, engine, overview now; S3-compatible store with WH-6). Managed hosting undecided (open decision OD2).
 
 **Single VPS (`deploy/vps/`).** Status: implemented (2026-11-20), a test deployment, not the OD2 decision.
-- **How it ships:** `deploy.py` builds the warehouse image locally and streams it over SSH into `docker load`; there is no registry. It writes `compose.yml` and a `Caddyfile` to the folder named by `DIR` in the git-ignored `.ssh.env`.
+- **How it ships:** `deploy.py` builds the warehouse, overview and engine images locally (tag: git short SHA, `-dirty` with uncommitted changes) and streams them over SSH into `docker load`; there is no registry. It writes `compose.yml` and a `Caddyfile` to the folder named by `DIR` in the git-ignored `.ssh.env`.
 - **Postgres:** the server's existing `it-pg-db`, reached on the external `it-db-net` network. Its databases and owner logins are the server owner's (`.env.docker` on the VPS). The deploy adds only `secretary_app` and `secretary_warehouse`, the RLS-bound runtime login.
 - **TLS:** Caddy terminates TLS with a private CA certificate for the IP (`make_certs.py`). The warehouse is on `:8443`, Keycloak on `:8444`, and the issuer is `https://<ip>:8444/realms/secretary`. Clients must trust `deploy/vps/secrets/certs/ca.crt`.
 - **Realm:** imported without the dev test user.
+- **Services:** warehouse, overview (dashboard on `:8445`), engine (no published port) and Keycloak, all RLS-bound or on their own DB. Caddy compresses responses (`encode zstd gzip`) on `:8444` and `:8445`.
+- **Keycloak admin:** the deploy's last step logs in with `KEYCLOAK_ADMIN_PASSWORD` from `secrets/.env.deploy` to point the dashboard client at the URL. Keycloak applies that password only when its database is first created, so if the admin password was changed in Keycloak the step fails (the deploy still exits 0, and the existing client keeps working).

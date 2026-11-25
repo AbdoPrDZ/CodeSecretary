@@ -28,8 +28,18 @@ def user_transaction(db: Database, user_id: int):
   """A transaction scoped to ``user_id``; ORM calls inside share it."""
 
   with db.transaction() as conn:
-    conn.execute("SELECT set_config('app.user_id', %s, true)", [str(int(user_id))])
+    set_tenant(conn, user_id)
     yield conn
+
+
+def set_tenant(conn, user_id: int) -> None:
+  """Scope the rest of an open transaction to ``user_id`` (transaction-local).
+
+  For a transaction that first resolves the user through a SECURITY DEFINER
+  entry point (e.g. the dashboard session lookup), then reads as that user.
+  """
+
+  conn.execute("SELECT set_config('app.user_id', %s, true)", [str(int(user_id))])
 
 
 @contextmanager

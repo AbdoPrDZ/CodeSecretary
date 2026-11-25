@@ -1,0 +1,31 @@
+[package]
+name = "secretary-engine"
+description = "CodeSecretary engine: correlates events to projects and builds work sessions (the only place time is computed)"
+version.workspace = true
+edition.workspace = true
+# sqlx 0.9 needs 1.94.
+rust-version = "1.94"
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+gethostname.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+secretary-shared.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["json"] }
+uuid.workspace = true
+
+[lints]
+workspace = true

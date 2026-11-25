@@ -1,0 +1,93 @@
+{
+  "assignments": [
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000011",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000013",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000014",
+      "project_id": 2,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 2
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000015",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000016",
+      "project_id": 1,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 1
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000017",
+      "project_id": 2,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 2
+    }
+  ],
+  "sessions": [
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-20T10:00:00Z",
+      "end": "2026-11-20T10:20:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000011"
+      ]
+    },
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-20T10:28:00Z",
+      "end": "2026-11-20T10:40:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000013"
+      ]
+    },
+    {
+      "project_id": 2,
+      "kind": "active",
+      "start": "2026-11-20T10:40:00Z",
+      "end": "2026-11-20T10:45:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000014"
+      ]
+    },
+    {
+      "project_id": 1,
+      "kind": "active",
+      "start": "2026-11-20T10:45:00Z",
+      "end": "2026-11-20T10:55:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000015",
+        "019a0000-0000-7000-8000-000000000016"
+      ]
+    }
+  ]
+}

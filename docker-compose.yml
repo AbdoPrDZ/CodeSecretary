@@ -5,9 +5,8 @@
 #   Keycloak: http://localhost:8180 (admin console: admin / admin; realm "secretary",
 #             test user dev@example.test / dev). See deploy/keycloak/README.md.
 #
-# Engine and overview services are added by their M0 tasks. S3-compatible
-# object storage for the raw archive is added with WH-6 (MinIO no longer
-# publishes free container images; pick a replacement then).
+# S3-compatible object storage for the raw archive is added with WH-6 (MinIO
+# no longer publishes free container images; pick a replacement then).
 
 name: secretary
 
@@ -48,6 +47,21 @@ services:
       - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+
+  # Time calculation worker (EN-1): claims (user, day) jobs the warehouse and
+  # overview queue, writes sessions. Health on :8070 (not published).
+  engine:
+    build:
+      context: .
+      dockerfile: engine/Dockerfile
+    environment:
+      # An RLS-bound login (member of secretary_app); dev reuses the warehouse's.
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_DB_PASSWORD:-warehouse}@postgres:5432/secretary
+      ENGINE_WORKERS: "2"
+      LOG_FORMAT: json
+    depends_on:
+      warehouse:
         condition: service_healthy
 
   # Dashboard API + web app (OV-1): http://localhost:8090, sign-in via Keycloak.

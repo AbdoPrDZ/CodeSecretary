@@ -1,0 +1,180 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "UTC",
+  "rules": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "signal": "path",
+      "pattern": "/home/dev/api",
+      "priority": 0,
+      "shared": false
+    },
+    {
+      "id": 2,
+      "project_id": 2,
+      "signal": "path",
+      "pattern": "/home/dev/web",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000010",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:00:00Z",
+        "timestamp_end": "2026-11-20T10:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000011",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:00:00Z",
+        "timestamp_end": "2026-11-20T10:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000012",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:28:00Z",
+        "timestamp_end": "2026-11-20T11:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000013",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:28:00Z",
+        "timestamp_end": "2026-11-20T10:40:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000014",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:40:00Z",
+        "timestamp_end": "2026-11-20T10:45:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/web",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000015",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:45:00Z",
+        "timestamp_end": "2026-11-20T10:46:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000016",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:52:00Z",
+        "timestamp_end": "2026-11-20T10:55:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000017",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T10:57:00Z",
+        "timestamp_end": "2026-11-20T10:57:30Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/web",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    }
+  ]
+}

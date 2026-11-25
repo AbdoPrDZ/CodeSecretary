@@ -52,6 +52,19 @@ services:
       keycloak:
         condition: service_healthy
 
+  # Time calculation worker: no published port, RLS-bound login.
+  engine:
+    image: secretary-engine:${ENGINE_TAG:?}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://secretary_warehouse:${WAREHOUSE_APP_PASSWORD}@${SECRETARY_WH_DB_HOSTNAME}:5432/${SECRETARY_WH_DB_NAME}
+      ENGINE_WORKERS: "2"
+      LOG_FORMAT: json
+    networks: [default, it-db-net]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.2
     restart: unless-stopped

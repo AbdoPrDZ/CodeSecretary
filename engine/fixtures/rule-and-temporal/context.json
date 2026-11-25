@@ -1,0 +1,181 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "UTC",
+  "rules": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "signal": "path",
+      "pattern": "/home/dev/api",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000001",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:00:00Z",
+        "timestamp_end": "2026-11-20T09:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000002",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:32:00Z",
+        "timestamp_end": "2026-11-20T10:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000003",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:00:00Z",
+        "timestamp_end": "2026-11-20T09:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "Code.exe",
+          "title": "main.rs - api - Visual Studio Code"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000004",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:00:00Z",
+        "timestamp_end": "2026-11-20T09:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000005",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:20:00Z",
+        "timestamp_end": "2026-11-20T09:24:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "chrome.exe",
+          "title": "Rust docs"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000006",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:24:00Z",
+        "timestamp_end": "2026-11-20T09:50:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "Code.exe",
+          "title": "main.rs - api - Visual Studio Code"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000007",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:24:00Z",
+        "timestamp_end": "2026-11-20T09:50:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000008",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:49:00Z",
+        "timestamp_end": null,
+        "source": "agent@0.1.0",
+        "event_type": "git.commit",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "branch": "main"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000009",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:50:00Z",
+        "timestamp_end": "2026-11-20T09:58:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "slack.exe",
+          "title": "general"
+        }
+      }
+    }
+  ]
+}

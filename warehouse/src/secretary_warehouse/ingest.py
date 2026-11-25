@@ -17,8 +17,15 @@ Per batch:
 3. ``server_adjusted_* = device timestamp - clock_offset_ms``.
 4. ``INSERT ... ON CONFLICT (event_id, timestamp_start) DO NOTHING``: a resent
    event is reported in ``duplicates`` and not stored twice.
+5. In the same transaction, newly stored events queue an engine job for every
+   local day (user's time zone) they touch, widened by :data:`DAY_MARGIN` on
+   both sides, since the engine loads that margin around each day (WH-7).
+   Debounce: a new job runs :data:`ENGINE_DEBOUNCE` later, and while it is
+   queued further batches for the same day join it (``DO NOTHING`` keeps its
+   ``run_after``), so a burst of uploads gives one job and steady uploads
+   still get a recalculation at least every :data:`ENGINE_DEBOUNCE`.
 
-Not yet: raw archive (WH-6) and engine job enqueue (WH-7).
+Not yet: raw archive (WH-6).
 
 Never log event contents; counts only.
 """
@@ -61,6 +68,12 @@ MAX_PROJECT_HINT = _LIMITS['max_project_hint']
 MAX_FUTURE_SKEW = timedelta(seconds=_LIMITS['max_future_skew_secs'])
 #: Older events are refused: partitions exist 12 months back (``app_ensure_event_partitions``).
 MAX_AGE = timedelta(days=360)
+#: Engine debounce (blueprint Appendix A): a queued day runs this long after its first batch.
+ENGINE_DEBOUNCE = timedelta(minutes=2)
+#: The engine loads this much around a local day (sessions crossing midnight).
+DAY_MARGIN = timedelta(hours=1)
+#: Event types that never change calculated time.
+NO_RECALC_TYPES = frozenset({'agent.heartbeat', 'agent.buffer_overflow'})
 #: A device clock further off than this is broken, not skewed.
 MAX_CLOCK_OFFSET_MS = 24 * 3600 * 1000
 
@@ -154,6 +167,15 @@ def ingest(db: Database, user_id: int, device_id: int, body: dict, now: datetime
           'rows': json.dumps(rows),
         }).fetchall()
       }
+      spans = [
+        {'s': r['server_adjusted_start'], 'e': r['server_adjusted_end'] or r['server_adjusted_start']}
+        for r in rows if r['event_id'] in inserted and r['event_type'] not in NO_RECALC_TYPES
+      ]
+      if spans:
+        conn.execute(ENQUEUE_SQL, {
+          'user_id': user_id, 'spans': json.dumps(spans),
+          'debounce': ENGINE_DEBOUNCE.total_seconds(), 'margin': DAY_MARGIN.total_seconds(),
+        })
     seen = set()
     for event_id in order:
       if event_id in seen:
@@ -261,6 +283,21 @@ FROM jsonb_to_recordset(%(rows)s::jsonb) AS r(
     metadata jsonb)
 ON CONFLICT (event_id, timestamp_start) DO NOTHING
 RETURNING event_id
+"""
+
+
+# One job per touched local day; a queued job keeps its run_after (debounce).
+ENQUEUE_SQL = """
+INSERT INTO processing_jobs (user_id, local_day, reason, status, run_after, attempts)
+SELECT DISTINCT u.id, d::date, 'ingest', 'queued', now() + make_interval(secs => %(debounce)s), 0
+FROM users u
+CROSS JOIN jsonb_to_recordset(%(spans)s::jsonb) AS r(s timestamptz, e timestamptz)
+CROSS JOIN LATERAL generate_series(
+    ((r.s - make_interval(secs => %(margin)s)) AT TIME ZONE u.time_zone)::date,
+    ((r.e + make_interval(secs => %(margin)s)) AT TIME ZONE u.time_zone)::date,
+    interval '1 day') AS d
+WHERE u.id = %(user_id)s
+ON CONFLICT (user_id, local_day) WHERE status = 'queued' DO NOTHING
 """
 
 

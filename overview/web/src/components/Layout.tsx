@@ -8,16 +8,24 @@ import { api } from '../api';
 import { initials } from '../format';
 import { useTheme, type Theme } from '../theme';
 import { isoDay } from '../timeline';
-import { IconFolder, IconLaptop, IconLogo, IconLogOut, IconMenu, IconMonitor, IconMoon, IconPulse, IconShield,
-  IconSun, IconX } from './icons';
+import { IconClock, IconFolder, IconLaptop, IconLogo, IconLogOut, IconMenu, IconMonitor, IconMoon, IconPulse,
+  IconShield, IconSun, IconX } from './icons';
 import { Button, cx, Segmented, Skeleton } from './ui';
 
-const NAV: { to: '/activity' | '/projects' | '/devices' | '/exclusions'; label: string; icon: ReactNode; hint: string }[] = [
+const NAV: { to: '/time' | '/activity' | '/projects' | '/devices' | '/exclusions'; label: string; icon: ReactNode; hint: string }[] = [
+  { to: '/time', label: 'Time', icon: <IconClock />, hint: 'Time per project' },
   { to: '/activity', label: 'Activity', icon: <IconPulse />, hint: 'Your day, as collected' },
   { to: '/projects', label: 'Projects', icon: <IconFolder />, hint: 'Projects and rules' },
   { to: '/devices', label: 'Devices', icon: <IconMonitor />, hint: 'Signed-in agents' },
   { to: '/exclusions', label: 'Privacy', icon: <IconShield />, hint: 'Exclusions and pauses' },
 ];
+
+function navSearch(to: (typeof NAV)[number]['to']) {
+  const day = isoDay(new Date());
+  if (to === '/activity') return { day };
+  if (to === '/time') return { period: 'day' as const, day };
+  return undefined;
+}
 
 export function Layout() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me, staleTime: 60_000 });
@@ -65,7 +73,7 @@ export function Layout() {
         <nav className="flex-1 space-y-1 px-3">
           <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">Workspace</div>
           {NAV.map((item) => (
-            <Link key={item.to} to={item.to} search={item.to === '/activity' ? { day: isoDay(new Date()) } : undefined}
+            <Link key={item.to} to={item.to} search={navSearch(item.to)}
                   className="group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-white"
                   activeProps={{ className: '!bg-brand-50 !text-brand-700 dark:!bg-brand-500/10 dark:!text-brand-200' }}>
               <span className="text-zinc-400 transition group-hover:text-zinc-600 group-data-[status=active]:text-brand-600 dark:group-data-[status=active]:text-brand-300 dark:group-hover:text-zinc-200">
@@ -77,7 +85,7 @@ export function Layout() {
           <div className="!mt-6 rounded-2xl bg-gradient-to-br from-brand-500/10 via-fuchsia-500/5 to-transparent p-4 ring-1 ring-brand-500/15">
             <div className="text-xs font-semibold text-brand-700 dark:text-brand-300">Time per project</div>
             <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-              Hours and cost appear when the engine is ready. Rules you add now apply to the last 30 days.
+              The engine recalculates a day a few minutes after new activity. Rules you add apply to the last 30 days.
             </p>
           </div>
         </nav>

@@ -32,7 +32,7 @@ shared/ · agent/{daemon,vscode,browser,shell}/ · warehouse/{src/secretary_ware
 
 ## Testing
 
-Unit · integration (testcontainers Postgres + MinIO) · engine golden tests · tenant isolation tests · redaction corpus · E2E on Docker Compose. Details: GENERAL plan §7.4.
+Unit · integration (testcontainers Postgres + MinIO) · engine golden tests (`engine/fixtures/<case>/{context,expected}.json`; inputs from `gen_fixtures.py`, outputs blessed with `SECRETARY_BLESS=1` and reviewed by hand) and engine DB tests (`ENGINE_TEST_DATABASE_URL` + `ENGINE_TEST_APP_URL`) · tenant isolation tests · redaction corpus · E2E on Docker Compose. Details: GENERAL plan §7.4.
 
 ## Definition of Done
 

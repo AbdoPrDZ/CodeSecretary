@@ -27,7 +27,7 @@
   - Acceptance: agent picks up changes within 5 min
 - [ ] OV-6 — Onboarding: create projects and rules (D17); detected repos offered as optional suggestions; trigger backfill
   - Acceptance: new user reaches Today with data in < 10 min
-- [ ] OV-7 — Today timeline + Week grid
+- [ ] OV-7 — Today timeline + Week grid · 🚧 in progress · 2026-11-25 · first slice: Time page (default route) with day / week / month totals per project from `GET /api/time` (adds up the engine's sessions), per-day stacked bars, the day's session timeline + list (`GET /api/sessions`), recalculating / failed state, time-zone prompt; 4 API tests (totals, privacy, time zone, compression); left: multi-device lanes, session detail (OV-8)
   - Acceptance: matches engine output; multi-device shown
 - [ ] OV-8 — Session detail with evidence
   - Acceptance: every session explains itself
@@ -46,7 +46,7 @@
   - Acceptance: CSV totals equal dashboard totals
 - [ ] OV-12 — Privacy: data view, export, delete · 🚧 in progress · 2026-11-20 · data view: Activity page (per-device day timeline of raw events in the browser's zone + event list with metadata; no totals); left: export, delete
   - Acceptance: delete removes data everywhere
-- [ ] OV-13 — Settings: time zone (re-enqueue on change)
+- [x] OV-13 — Settings: time zone (re-enqueue on change) · 2026-11-25 · `PUT /api/me/time_zone` (validated IANA name, CSRF) re-queues the last 30 days; the Time page offers the browser's zone when it differs; test: day bounds follow the new zone. No full settings page yet
   - Acceptance: day boundaries correct after change
 
 ### M5
@@ -90,6 +90,7 @@
 - [ ] OV-44 — Company SSO via Keycloak identity providers
 
 ## Notes
+- 2026-11-25: Dashboard speed (user report "loading is too slow"): responses were sent uncompressed (374 kB JS + 63 kB CSS + up to 5,000 events of JSON); added gzip (`GZipMiddleware`, > 1 KB) and `encode zstd gzip` in the VPS Caddyfile. The session lookup was two transactions with an UPDATE on every request; now one transaction, `last_seen_at` written at most every 5 min. The web app now has a default `staleTime` of 30 s (no refetch of a whole day on every focus), and the Activity table renders 300 rows at a time. Not measured on the VPS yet.
 - 2026-11-20: First dashboard slice, chosen by the user: sign-in, devices, raw activity and exclusions/pause windows, local first, then the VPS.
   - **OV-5:** exclusions and pause windows first; projects and rules added 2026-11-21.
   - **OV-12:** the data view only.

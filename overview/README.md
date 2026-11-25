@@ -41,6 +41,9 @@ Session cookie (`sec_session`, HTTP-only) from `/auth/login` → Keycloak →
 |---|---|
 | `GET /auth/login?next=/path`, `GET /auth/callback`, `POST /auth/logout` | Sign-in (authorization code + PKCE), sign-out (returns the Keycloak logout URL) |
 | `GET /api/me` | Email, time zone, CSRF token |
+| `PUT /api/me/time_zone` | The zone the engine cuts local days in; a change recalculates the last 30 days |
+| `GET /api/time?start=YYYY-MM-DD&end=YYYY-MM-DD` | Engine time per project and per day (at most 92 days), unassigned time, recalculating state |
+| `GET /api/sessions?day=YYYY-MM-DD` | The engine's sessions of one local day with project, duration and evidence count |
 | `GET /api/devices`, `PATCH /api/devices/{id}`, `POST /api/devices/{id}/revoke` | Devices; a revoked device is refused by the warehouse within a minute |
 | `GET /api/activity?day=YYYY-MM-DD&tz=Area/City` | Raw events of a local day (at most 5,000), no totals |
 | `GET/POST /api/projects`, `PATCH/DELETE /api/projects/{id}` | Projects (name, client, billable, hourly rate, currency, color, archived) with their rules |

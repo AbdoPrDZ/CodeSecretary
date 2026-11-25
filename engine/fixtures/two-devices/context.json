@@ -1,0 +1,93 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "UTC",
+  "rules": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "signal": "title",
+      "pattern": "ops",
+      "priority": 0,
+      "shared": false
+    },
+    {
+      "id": 2,
+      "project_id": 2,
+      "signal": "path",
+      "pattern": "/home/dev/web",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000028",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:00:00Z",
+        "timestamp_end": "2026-11-20T09:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000029",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:00:00Z",
+        "timestamp_end": "2026-11-20T09:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/web",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 2,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000030",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:20:00Z",
+        "timestamp_end": "2026-11-20T10:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 2,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000031",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T09:20:00Z",
+        "timestamp_end": "2026-11-20T10:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "WindowsTerminal.exe",
+          "title": "ops: deploy"
+        }
+      }
+    }
+  ]
+}

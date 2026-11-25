@@ -31,6 +31,21 @@ export function initials(nameOrEmail: string): string {
   return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
+/** A duration the API returned, as `3 h 05 min` / `42 min` / `0 min`. */
+export function duration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return `${h} h ${String(m).padStart(2, '0')} min`;
+}
+
+/** Compact `3.5h` for chart labels. */
+export function hours(seconds: number): string {
+  const h = seconds / 3600;
+  return h >= 10 ? `${Math.round(h)}h` : `${(Math.round(h * 10) / 10).toString()}h`;
+}
+
 export function plural(n: number, word: string): string {
   return `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
 }

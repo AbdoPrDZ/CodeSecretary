@@ -9,7 +9,8 @@
 
 Every query runs in the signed-in user's RLS context (tenant identity comes
 from the session, never from the request). Raw activity is returned as
-stored; this service never computes time.
+stored; this service never computes time: ``/api/time`` and
+``/api/sessions`` only read and add up the engine's work sessions.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
@@ -49,6 +51,8 @@ _CURRENCY = re.compile(r'^[A-Z]{3}$')
 #: (OVERVIEW plan: "last 30 by default").
 PREVIEW_DAYS = 30
 RECALC_DAYS = 30
+#: Longest range ``/api/time`` adds up in one request.
+MAX_TIME_RANGE_DAYS = 92
 #: Most distinct evidence groups a preview reads; the response says when it was cut.
 MAX_PREVIEW_GROUPS = 20000
 _ALL_EVIDENCE = [c for s in rules.SIGNALS for c in rules.EVIDENCE_COLUMNS[s]]
@@ -72,6 +76,11 @@ class NewExclusion(BaseModel):
   start: str | None = None
   end: str | None = None
   days: list[int] | None = None
+
+
+class TimeZoneBody(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  time_zone: str = Field(min_length=1, max_length=64)
 
 
 class ProjectFields(BaseModel):
@@ -110,6 +119,9 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
                 docs_url=None, redoc_url=None, openapi_url=None)
 
   # -- cross-cutting -------------------------------------------------------
+
+  # A day of activity is up to 5,000 events of JSON: compress what is worth it.
+  app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
   @app.middleware('http')
   async def security_headers(request: Request, call_next):
@@ -218,6 +230,84 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
       user = conn.execute('SELECT email, display_name, time_zone FROM users WHERE id = %s',
                           [session.user_id]).fetchone()
     return {**user, 'csrf_token': session.csrf_token}
+
+  @app.put('/api/me/time_zone')
+  def set_time_zone(body: TimeZoneBody, session: sessions.Session = Depends(mutating)):
+    """The zone the engine cuts local days in (OV-13); recalculates recent days."""
+
+    try:
+      ZoneInfo(body.time_zone)
+    except (ZoneInfoNotFoundError, ValueError):
+      raise ApiError(400, 'invalid_time_zone') from None
+    with user_transaction(db, session.user_id) as conn:
+      old = conn.execute('SELECT time_zone FROM users WHERE id = %s', [session.user_id]).fetchone()
+      if old['time_zone'] != body.time_zone:
+        conn.execute('UPDATE users SET time_zone = %s, updated_at = now() WHERE id = %s',
+                     [body.time_zone, session.user_id])
+        _enqueue_recalc(conn, session.user_id, 'time_zone_changed')
+    return {'time_zone': body.time_zone}
+
+  @app.get('/api/time')
+  def time_summary(start: str, end: str, session: sessions.Session = Depends(current)):
+    """The engine's results per project and day for local days ``start``..``end``."""
+
+    try:
+      first, last = date.fromisoformat(start), date.fromisoformat(end)
+    except ValueError:
+      raise ApiError(400, 'invalid_range') from None
+    if last < first or (last - first).days >= MAX_TIME_RANGE_DAYS:
+      raise ApiError(400, 'invalid_range')
+    with user_transaction(db, session.user_id) as conn:
+      rows = conn.execute(
+        """SELECT local_day, project_id, count(*) AS sessions,
+                  sum(extract(epoch FROM ends_at - starts_at))::bigint AS seconds
+           FROM work_sessions
+           WHERE local_day BETWEEN %s AND %s AND kind = 'active'
+           GROUP BY local_day, project_id""",
+        [first, last],
+      ).fetchall()
+      projects = {p['id']: p for p in conn.execute(
+        'SELECT id, name, color, archived_at FROM projects').fetchall()}
+      user = conn.execute('SELECT time_zone FROM users WHERE id = %s', [session.user_id]).fetchone()
+      jobs = _job_state(conn, session.user_id, first, last)
+    return _time_summary(first, last, rows, projects, user['time_zone'], jobs)
+
+  @app.get('/api/sessions')
+  def day_sessions(day: str, session: sessions.Session = Depends(current)):
+    """The engine's sessions of one local day (user's time zone), in time order."""
+
+    try:
+      local_day = date.fromisoformat(day)
+    except ValueError:
+      raise ApiError(400, 'invalid_day') from None
+    with user_transaction(db, session.user_id) as conn:
+      user = conn.execute('SELECT time_zone FROM users WHERE id = %s', [session.user_id]).fetchone()
+      rows = conn.execute(
+        """SELECT s.id, s.project_id, p.name AS project_name, p.color AS project_color, s.kind,
+                  s.starts_at, s.ends_at, s.low_confidence, s.estimated,
+                  (SELECT count(*) FROM session_evidence e WHERE e.session_id = s.id) AS evidence
+           FROM work_sessions s LEFT JOIN projects p ON p.id = s.project_id
+           WHERE s.local_day = %s
+           ORDER BY s.starts_at""",
+        [local_day],
+      ).fetchall()
+      jobs = _job_state(conn, session.user_id, local_day, local_day)
+    zone = _zone(user['time_zone'])
+    start = datetime.combine(local_day, time.min, zone).astimezone(UTC)
+    end = datetime.combine(local_day + timedelta(days=1), time.min, zone).astimezone(UTC)
+    return {
+      'day': local_day.isoformat(),
+      'time_zone': user['time_zone'],
+      'range': {'start': _iso(start), 'end': _iso(end)},
+      'sessions': [{
+        'id': r['id'], 'project_id': r['project_id'], 'project_name': r['project_name'],
+        'project_color': r['project_color'], 'kind': r['kind'],
+        'start': _iso(r['starts_at']), 'end': _iso(r['ends_at']),
+        'seconds': int((r['ends_at'] - r['starts_at']).total_seconds()),
+        'low_confidence': r['low_confidence'], 'estimated': r['estimated'], 'evidence': r['evidence'],
+      } for r in rows],
+      **jobs,
+    }
 
   @app.get('/api/devices')
   def devices(session: sessions.Session = Depends(current)):
@@ -647,6 +737,71 @@ def _enqueue_recalc(conn, user_id: int, reason: str) -> None:
        ON CONFLICT (user_id, local_day) WHERE status = 'queued' DO NOTHING""",
     [user_id, reason, today - timedelta(days=RECALC_DAYS - 1), today],
   )
+
+
+def _zone(name: str | None) -> ZoneInfo:
+  try:
+    return ZoneInfo(name or 'UTC')
+  except (ZoneInfoNotFoundError, ValueError):
+    return ZoneInfo('UTC')
+
+
+def _job_state(conn, user_id: int, first: date, last: date) -> dict:
+  """Engine queue state for the user's days (``processing_jobs`` has no RLS: filter by user)."""
+
+  row = conn.execute(
+    """SELECT count(*) FILTER (WHERE status IN ('queued', 'running')) AS pending,
+              count(*) FILTER (WHERE status = 'failed') AS failed,
+              max(updated_at) FILTER (WHERE status = 'done') AS last_done
+       FROM processing_jobs
+       WHERE user_id = %s AND local_day BETWEEN %s AND %s""",
+    [user_id, first, last],
+  ).fetchone()
+  return {'pending_days': row['pending'], 'failed_days': row['failed'],
+          'calculated_at': _iso(row['last_done'])}
+
+
+def _time_summary(first: date, last: date, rows: list[dict], projects: dict, time_zone: str,
+                  jobs: dict) -> dict:
+  """Adds up the engine's session lengths (reporting); never derives time from events."""
+
+  days: dict[date, dict] = {first + timedelta(days=i): {} for i in range((last - first).days + 1)}
+  totals: dict[int | None, dict] = {}
+  for r in rows:
+    key = r['project_id']
+    days[r['local_day']][key] = days[r['local_day']].get(key, 0) + r['seconds']
+    t = totals.setdefault(key, {'seconds': 0, 'sessions': 0, 'days': 0})
+    t['seconds'] += r['seconds']
+    t['sessions'] += r['sessions']
+    t['days'] += 1
+
+  def label(pid: int) -> dict:
+    p = projects.get(pid) or {}
+    return {'project_id': pid, 'name': p.get('name'), 'color': p.get('color'),
+            'archived': p.get('archived_at') is not None}
+
+  project_totals = sorted(
+    ({**label(pid), **t} for pid, t in totals.items() if pid is not None),
+    key=lambda p: (-p['seconds'], p['name'] or ''),
+  )
+  unassigned = totals.get(None, {'seconds': 0})
+  return {
+    'start': first.isoformat(),
+    'end': last.isoformat(),
+    'time_zone': time_zone,
+    'total_seconds': sum(t['seconds'] for t in totals.values()),
+    'assigned_seconds': sum(p['seconds'] for p in project_totals),
+    'unassigned_seconds': unassigned['seconds'],
+    'projects': project_totals,
+    'days': [{
+      'day': d.isoformat(),
+      'total_seconds': sum(v.values()),
+      'unassigned_seconds': v.get(None, 0),
+      'projects': [{'project_id': pid, 'seconds': sec} for pid, sec in sorted(
+        ((pid, sec) for pid, sec in v.items() if pid is not None), key=lambda x: -x[1])],
+    } for d, v in days.items()],
+    **jobs,
+  }
 
 
 def _project(row: dict) -> dict:

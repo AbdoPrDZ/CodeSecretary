@@ -1,6 +1,6 @@
 # Workflows
 
-Status: device login and the agent → warehouse upload path implemented (M1 demo); the rest planned. Source: blueprint §5, §9.1, §11.1; service plans; `agent/daemon/src/`, `warehouse/src/secretary_warehouse/`.
+Status: device login, the agent → warehouse upload path and recalculation (ingest, rule and time-zone triggers → engine) implemented; the rest planned. Source: blueprint §5, §9.1, §11.1; service plans; `agent/daemon/src/`, `warehouse/src/secretary_warehouse/`.
 
 ## Event Lifecycle
 
@@ -17,7 +17,8 @@ Implemented so far:
   - **Exclusions:** an event touching an excluded path or app is dropped whole.
   - **Pause windows:** device local time. Point events inside a window are dropped; intervals are cut at the window edges. `agent.pause` / `agent.resume` (`exclusion_window`) mark the edges.
   - **Config:** cached in `agent_config.json`, so it applies from the first event after a restart and while signed out or offline. It is refetched every 5 min with the `ETag`.
-- **Warehouse side:** steps 4's authenticate, validate, adjust and insert are done. The raw archive (WH-6) and job enqueue (WH-7) are not.
+- **Warehouse side:** step 4's authenticate, validate, adjust, insert and enqueue are done (in one transaction). The raw archive (WH-6) is not.
+- **Engine side:** step 5 is done (engine v1); see Recalculation.
 - **Buffer rule:** buffered events leave the agent only when the warehouse acknowledges them, as accepted, duplicate or rejected. A lost response therefore costs a resend, never a duplicate.
 
 ## Device Login (Keycloak device authorization grant, D14)
@@ -37,6 +38,18 @@ Overview redirects to Keycloak (GitHub/Google brokered there) → auth code + PK
 ## Recalculation
 
 Triggered by new events, rule/mapping/override/adjustment/time-zone changes, or an algorithm version bump. Always a full recompute of the affected (user, local day); idempotent. Overview shows a "recalculating" state until the job finishes.
+
+Status: implemented (WH-7, EN-1/2/11/14).
+- **Queue:** `processing_jobs` is the queue, at most one `queued` and one `running` job per (user, local day), both enforced by partial unique indexes. Producers upsert a queued job with `ON CONFLICT DO NOTHING`.
+- **Ingest:** a new job runs 2 min after the first batch. Later batches join it, so bursts coalesce and steady uploads still recalculate about every 2 min. Each event queues every local day touched by its span ±1 h. Heartbeats and duplicates queue nothing.
+- **Overview:** rule, project and time-zone changes queue the last 30 days to run now.
+- **Engine startup:** it queues the last 30 days that have activity but no sessions from the current `ALGORITHM_VERSION` (`app_enqueue_uncalculated_days`).
+- **Engine worker:**
+  - claims the oldest due job whose day has no running job (`SKIP LOCKED`)
+  - refreshes `locked_at` every 30 s
+  - loads, calculates, replaces the day's rows and marks the job done in one transaction, under the user's RLS context
+- **Failures:** retry with backoff 10 s → 30 min. After 5 attempts the job is `failed` with an error kind only. A failure while new input is queued merges into the queued job.
+- **Reclaim:** a job not refreshed for 5 min is reclaimed. Done jobs are kept 7 days.
 
 ## Corrections
 

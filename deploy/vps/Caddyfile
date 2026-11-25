@@ -14,14 +14,17 @@
 # Keycloak: it builds its public URLs from KC_HOSTNAME and these headers.
 :8444 {
 	tls /certs/server.crt /certs/server.key
+	encode zstd gzip
 	reverse_proxy keycloak:8080 {
 		header_up X-Forwarded-Proto https
 		header_up X-Forwarded-Port 8444
 	}
 }
 
-# Dashboard (API + web app).
+# Dashboard (API + web app). The app compresses its own responses; this also
+# covers anything it leaves uncompressed.
 :8445 {
 	tls /certs/server.crt /certs/server.key
+	encode zstd gzip
 	reverse_proxy overview:8090
 }

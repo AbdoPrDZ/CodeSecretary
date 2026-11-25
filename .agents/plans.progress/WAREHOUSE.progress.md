@@ -32,7 +32,7 @@
   - Acceptance: re-sending a batch creates no duplicates
 - [ ] WH-6 — Raw archive writer (S3-compatible local store TBD — MinIO images discontinued; S3/R2 prod)
   - Acceptance: every accepted batch archived; replay tool restores DB
-- [ ] WH-7 — Job enqueue with debounce per (user, local day)
+- [x] WH-7 — Job enqueue with debounce per (user, local day) · 2026-11-25 · in the ingest transaction, newly stored events (not heartbeats, not duplicates) queue one job per local day they touch (user's time zone, ±1 h engine margin); `run_after` = first batch + 2 min, later batches join the queued job (`DO NOTHING`), so bursts coalesce and steady uploads still recalculate every ~2 min; tests: 100 batches → one job per day, time-zone days, heartbeat/duplicate → none
   - Acceptance: 100 batches in 1 min → 1 job per affected day
 - [x] WH-8 — Heartbeat endpoint · 2026-11-07 · `POST /v1/agent/heartbeat` updates last_seen_at, clock_offset_ms, agent_version, queue_depth; returns `server_time` (agent derives clock offset)
   - Acceptance: `devices.last_seen` updated

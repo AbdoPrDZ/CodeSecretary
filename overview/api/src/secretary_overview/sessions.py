@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 
 from secretary_orm import Database
 
-from secretary_warehouse.db import system_transaction, user_transaction
+from secretary_warehouse.db import set_tenant, system_transaction, user_transaction
 
 COOKIE = 'sec_session'
 
@@ -56,24 +56,32 @@ def create(db: Database, user_id: int, hours: int, auth_session_id: str | None,
   return token
 
 
+#: ``last_seen_at`` is refreshed at most this often (not on every request).
+TOUCH_INTERVAL = timedelta(minutes=5)
+
+
 def load(db: Database, token: str | None) -> Session | None:
+  """The session for a cookie token: one transaction, and a write only every
+  :data:`TOUCH_INTERVAL` (this runs on every API request)."""
+
   if not token or len(token) > 128:
     return None
   token_hash = _hash(token)
   with system_transaction(db) as conn:
     row = conn.execute('SELECT app_web_session_user(%s) AS user_id', [token_hash]).fetchone()
-  if row is None or row['user_id'] is None:
-    return None
-  user_id = int(row['user_id'])
-  with user_transaction(db, user_id) as conn:
+    if row is None or row['user_id'] is None:
+      return None
+    user_id = int(row['user_id'])
+    set_tenant(conn, user_id)
     session = conn.execute(
-      """UPDATE web_sessions SET last_seen_at = now()
-         WHERE token_hash = %s AND expires_at > now()
-         RETURNING csrf_token, id_token""",
-      [token_hash],
+      """SELECT csrf_token, id_token, last_seen_at < now() - %s AS stale
+         FROM web_sessions WHERE token_hash = %s AND expires_at > now()""",
+      [TOUCH_INTERVAL, token_hash],
     ).fetchone()
-  if session is None:
-    return None
+    if session is None:
+      return None
+    if session['stale'] is not False:
+      conn.execute('UPDATE web_sessions SET last_seen_at = now() WHERE token_hash = %s', [token_hash])
   return Session(user_id=user_id, token_hash=token_hash, csrf_token=session['csrf_token'],
                  id_token=session['id_token'])
 

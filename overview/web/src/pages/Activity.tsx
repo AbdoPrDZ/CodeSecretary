@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { api, type ActivityEvent } from '../api';
 import { IconBolt, IconCalendar, IconChevronLeft, IconChevronRight, IconClock, IconLayers, IconMonitor,
@@ -13,6 +13,8 @@ import { isoDay, layout, shiftDay, styleOf } from '../timeline';
 
 const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const HOURS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+/** Table rows rendered at first (a day can hold 5,000 events). */
+const PAGE = 300;
 
 export function ActivityPage() {
   const { day } = activityRoute.useSearch();
@@ -27,6 +29,8 @@ export function ActivityPage() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ActivityEvent | null>(null);
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => setLimit(PAGE), [day, query, hidden]);
 
   const data = activity.data;
   const events = useMemo(() => (data?.events ?? []).filter((e) => !hidden.has(e.event_type)), [data, hidden]);
@@ -57,7 +61,7 @@ export function ActivityPage() {
       <PageHeader
         eyebrow={day === today ? 'Today' : 'Activity'}
         title={longDay(day)}
-        description="Raw activity as your agents collected it. Project time is calculated by the engine and appears here once it is ready."
+        description="Raw activity as your agents collected it. Time per project is on the Time page."
         actions={
           <div className="flex items-center gap-1 rounded-xl bg-white p-1 shadow-soft ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
             <IconButton label="Previous day" onClick={() => go(shiftDay(day, -1))}><IconChevronLeft size={16} /></IconButton>
@@ -175,7 +179,7 @@ export function ActivityPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-              {rows.map((e) => (
+              {rows.slice(0, limit).map((e) => (
                 <tr key={e.event_id} onClick={() => setSelected(e)}
                     className={cx('cursor-pointer transition hover:bg-zinc-50 dark:hover:bg-zinc-800/40',
                       selected?.event_id === e.event_id && 'bg-brand-50/60 dark:bg-brand-500/5')}>
@@ -196,6 +200,13 @@ export function ActivityPage() {
             </tbody>
           </table>
           {data && rows.length === 0 && all.length > 0 && <p className="p-5 text-sm text-zinc-500">No events match.</p>}
+          {rows.length > limit && (
+            <div className="border-t border-zinc-100 p-3 text-center dark:border-zinc-800/80">
+              <Button size="sm" variant="ghost" onClick={() => setLimit((n) => n + PAGE * 3)}>
+                Show more ({(rows.length - limit).toLocaleString()} left)
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
 

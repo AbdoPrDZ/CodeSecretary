@@ -1,0 +1,133 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "UTC",
+  "rules": [
+    {
+      "id": 10,
+      "project_id": 3,
+      "signal": "app",
+      "pattern": "figma",
+      "priority": 0,
+      "shared": true
+    },
+    {
+      "id": 11,
+      "project_id": 4,
+      "signal": "title",
+      "pattern": "landing",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "overrides": {
+    "019a0000-0000-7000-8000-000000000022": null,
+    "019a0000-0000-7000-8000-000000000023": 5
+  },
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000024",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T14:00:00Z",
+        "timestamp_end": "2026-11-20T15:00:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000025",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T14:00:00Z",
+        "timestamp_end": "2026-11-20T14:15:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "figma.exe",
+          "title": "Brand"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000026",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T14:15:00Z",
+        "timestamp_end": "2026-11-20T14:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "figma.exe",
+          "title": "Landing v2"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000022",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T14:30:00Z",
+        "timestamp_end": "2026-11-20T14:40:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "figma.exe",
+          "title": "Holiday card"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000023",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T14:40:00Z",
+        "timestamp_end": "2026-11-20T14:50:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "figma.exe",
+          "title": "Landing page"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000027",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T15:00:00Z",
+        "timestamp_end": "2026-11-20T15:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "window.focus",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {
+          "app": "figma.exe",
+          "title": "Brand"
+        }
+      }
+    }
+  ]
+}

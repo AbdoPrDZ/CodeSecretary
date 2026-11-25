@@ -1,0 +1,67 @@
+{
+  "assignments": [
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000023",
+      "project_id": 5,
+      "method": "user",
+      "confidence": 1.0,
+      "rule_id": null
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000025",
+      "project_id": 3,
+      "method": "shared_rule",
+      "confidence": 0.95,
+      "rule_id": 10
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000026",
+      "project_id": 4,
+      "method": "rule",
+      "confidence": 0.95,
+      "rule_id": 11
+    },
+    {
+      "event_id": "019a0000-0000-7000-8000-000000000027",
+      "project_id": 3,
+      "method": "shared_rule",
+      "confidence": 0.95,
+      "rule_id": 10
+    }
+  ],
+  "sessions": [
+    {
+      "project_id": 3,
+      "kind": "active",
+      "start": "2026-11-20T14:00:00Z",
+      "end": "2026-11-20T14:15:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000025"
+      ]
+    },
+    {
+      "project_id": 4,
+      "kind": "active",
+      "start": "2026-11-20T14:15:00Z",
+      "end": "2026-11-20T14:30:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000026"
+      ]
+    },
+    {
+      "project_id": 5,
+      "kind": "active",
+      "start": "2026-11-20T14:40:00Z",
+      "end": "2026-11-20T14:50:00Z",
+      "low_confidence": false,
+      "estimated": false,
+      "evidence": [
+        "019a0000-0000-7000-8000-000000000023"
+      ]
+    }
+  ]
+}

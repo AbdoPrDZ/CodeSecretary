@@ -1,0 +1,88 @@
+{
+  "local_day": "2026-11-20",
+  "time_zone": "Europe/Paris",
+  "rules": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "signal": "path",
+      "pattern": "/home/dev/api",
+      "priority": 0,
+      "shared": false
+    }
+  ],
+  "events": [
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000018",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-19T22:30:00Z",
+        "timestamp_end": "2026-11-19T23:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000019",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-19T22:30:00Z",
+        "timestamp_end": "2026-11-19T23:30:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000020",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T22:40:00Z",
+        "timestamp_end": "2026-11-20T23:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "presence.active",
+        "project_hint": null,
+        "repository": null,
+        "working_directory": null,
+        "metadata": {}
+      }
+    },
+    {
+      "device_id": 1,
+      "event": {
+        "event_id": "019a0000-0000-7000-8000-000000000021",
+        "schema_version": 1,
+        "timestamp_start": "2026-11-20T22:40:00Z",
+        "timestamp_end": "2026-11-20T23:20:00Z",
+        "source": "agent@0.1.0",
+        "event_type": "editor.file_focus",
+        "project_hint": null,
+        "repository": {
+          "root_path": "/home/dev/api",
+          "remote_url": null
+        },
+        "working_directory": null,
+        "metadata": {
+          "file_path": "src/main.rs",
+          "language": "rust"
+        }
+      }
+    }
+  ]
+}
