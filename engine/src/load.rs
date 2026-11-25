@@ -1,4 +1,5 @@
-//! Context loader (EN-3): everything one (user, local day) calculation reads.
+//! Context loader (EN-3): everything one (user, local day) calculation reads:
+//! events, rules, overrides and the day's adjustments (EN-10).
 //!
 //! Runs inside a transaction whose `app.user_id` is the job's user, so RLS
 //! limits every query to that user's rows (and the shared rules of their
@@ -16,7 +17,8 @@ use sqlx::{PgConnection, Row};
 use uuid::Uuid;
 
 use crate::model::{
-    Context, DAY_MARGIN_SECS, DayEvent, RuleRow, Settings, Time, day_bounds, parse_tz,
+    Adjustment, AdjustmentKind, Context, DAY_MARGIN_SECS, DayEvent, RuleRow, Settings, Time,
+    day_bounds, parse_tz,
 };
 
 /// Event types the calculation reads.
@@ -138,6 +140,35 @@ pub async fn load(
     .filter_map(|r| Some((r.try_get("event_id").ok()?, r.try_get("project_id").ok()?)))
     .collect();
 
+    // Undone corrections keep their row with `deleted_at` set.
+    let adjustments: Vec<Adjustment> = sqlx::query(
+        "SELECT id, kind, starts_at, ends_at, project_id, from_project_id FROM time_adjustments
+          WHERE user_id = $1 AND local_day = $2 AND deleted_at IS NULL
+          ORDER BY id",
+    )
+    .bind(user_id)
+    .bind(local_day)
+    .fetch_all(&mut *conn)
+    .await?
+    .iter()
+    .filter_map(|r| {
+        let kind = match r.try_get::<String, _>("kind").ok()?.as_str() {
+            "add" => AdjustmentKind::Add,
+            "remove" => AdjustmentKind::Remove,
+            "reassign" => AdjustmentKind::Reassign,
+            _ => return None,
+        };
+        Some(Adjustment {
+            id: r.try_get("id").ok()?,
+            kind,
+            start: r.try_get("starts_at").ok()?,
+            end: r.try_get("ends_at").ok()?,
+            project_id: r.try_get("project_id").ok()?,
+            from_project_id: r.try_get("from_project_id").ok()?,
+        })
+    })
+    .collect();
+
     Ok((
         Context {
             local_day,
@@ -145,6 +176,7 @@ pub async fn load(
             events,
             rules,
             overrides,
+            adjustments,
             settings: Settings::default(),
         },
         stats,

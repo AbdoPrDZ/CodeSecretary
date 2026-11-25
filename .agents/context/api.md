@@ -53,6 +53,7 @@ Status: implemented for the first slice (OV-1–5, OV-12 data view, OV-7 time pe
 - **Time** (`/api/time`, `/api/sessions`) only reads `work_sessions` and adds up their lengths per project and day (reporting). It never derives time from events.
   - Days are the user's `time_zone` local days. Ranges are at most 92 days.
   - Each response carries the user's engine queue state (`pending_days`, `failed_days`), read from `processing_jobs`, which has no RLS, so it is filtered by the session user explicitly.
+- **Corrections:** `POST /api/assign`, `/api/adjustments` and `GET /api/sessions/{id}`, `GET /api/inbox`. They only write engine inputs, never derived rows. Project ids must be visible to the caller, and unknown or foreign events are silently skipped (RLS).
 - **Time zone** (`PUT /api/me/time_zone`): the zone the engine cuts days in. A change queues the last 30 days.
 - **Performance:** responses over 1 KB are gzip-compressed. The session lookup is one transaction and writes `last_seen_at` at most every 5 min.
 - **Projects and rules (D17):** projects are created in the personal workspace; rules are personal (`project_mappings.user_id` = the user), shared team rules come with Phase 3.

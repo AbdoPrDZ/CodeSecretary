@@ -468,12 +468,12 @@ async fn calculates_a_day_end_to_end(owner: &PgPool, app: &PgPool) {
     let rows = snapshot().await;
     assert_eq!(rows.len(), 2, "{rows:?}");
     assert!(rows[0].starts_with(&format!(
-        "Some({project})|active|{}|{}|1|",
+        "Some({project})|active|{}|{}|{ALGORITHM_VERSION}|",
         h(0).to_rfc3339(),
         h(25).to_rfc3339()
     )));
     assert!(rows[1].starts_with(&format!(
-        "None|active|{}|{}|1|",
+        "None|active|{}|{}|{ALGORITHM_VERSION}|",
         h(25).to_rfc3339(),
         h(30).to_rfc3339()
     )));
@@ -544,4 +544,41 @@ async fn calculates_a_day_end_to_end(owner: &PgPool, app: &PgPool) {
     let (ctx, stats) = load::load(&mut tx, u, day).await.unwrap();
     assert_eq!((stats.events, stats.skipped, ctx.rules.len()), (3, 0, 1));
     assert_eq!(ctx.time_zone, "Europe/Paris");
+    tx.rollback().await.unwrap();
+
+    // EN-10: the unassigned tail moved to the project survives every
+    // recalculation; an undone correction no longer applies.
+    let adjustment: i64 = sqlx::query_scalar(
+        "INSERT INTO time_adjustments (user_id, local_day, kind, starts_at, ends_at, project_id)
+         VALUES ($1, $2, 'reassign', $3, $4, $5) RETURNING id",
+    )
+    .bind(u)
+    .bind(day)
+    .bind(h(25))
+    .bind(h(30))
+    .bind(project)
+    .fetch_one(owner)
+    .await
+    .unwrap();
+    for _ in 0..2 {
+        enqueue(owner, u, day).await;
+        let job = claim_only(app).await;
+        calc.process(app, &job, "w1").await.expect("calculated");
+        let rows = snapshot().await;
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        assert!(rows[0].starts_with(&format!(
+            "Some({project})|active|{}|{}|{ALGORITHM_VERSION}|",
+            h(0).to_rfc3339(),
+            h(30).to_rfc3339()
+        )));
+    }
+    sqlx::query("UPDATE time_adjustments SET deleted_at = now() WHERE id = $1")
+        .bind(adjustment)
+        .execute(owner)
+        .await
+        .unwrap();
+    enqueue(owner, u, day).await;
+    let job = claim_only(app).await;
+    calc.process(app, &job, "w1").await.expect("calculated");
+    assert_eq!(snapshot().await.len(), 2, "undone correction still applied");
 }

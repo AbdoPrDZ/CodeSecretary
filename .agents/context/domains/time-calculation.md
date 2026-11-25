@@ -38,6 +38,11 @@ As implemented (v1), where it differs or adds detail:
 - **Merge** needs the gap to be present. Merging happens before short sessions are dropped, so a sub-minute switch still splits a session.
 - **Day ownership:** sessions are cut at the local day's bounds (user's `time_zone`). Each day owns exactly its own time, and the ±1 h margin only gives context.
 - Unassigned time becomes sessions with no project, so it is visible and correctable.
+- **Adjustments (v2):** applied after the day cut, in id order, clipped to the day.
+  - `remove` drops matching parts; `reassign` moves them; matching means the from-project, or any project when none is set.
+  - `add` replaces the range with a manual session.
+  - Touching same-project pieces are then joined.
+  - Manual sessions have no evidence and do not count against presence in the invariants.
 
 ## Rules and Invariants
 

@@ -22,4 +22,5 @@ pub mod write;
 /// Bumped whenever the output for the same input changes (with golden
 /// updates). Stored on every session and assignment; on startup the engine
 /// recalculates the last 30 days that lack sessions of this version.
-pub const ALGORITHM_VERSION: i32 = 1;
+/// 2: user adjustments (EN-10) and manual sessions.
+pub const ALGORITHM_VERSION: i32 = 2;

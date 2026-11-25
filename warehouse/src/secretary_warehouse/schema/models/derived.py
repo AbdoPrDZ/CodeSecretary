@@ -49,6 +49,7 @@ class WorkSession(models.Model):
   ends_at = fields.DateTimeField(name='Ends', use_tz=True, required=True)
   low_confidence = fields.BooleanField(name='Low Confidence', default=False)  # overlaps a coverage gap
   estimated = fields.BooleanField(name='Estimated', default=False)  # Git backfill
+  manual = fields.BooleanField(name='Manual', default=False)  # user-added time (an 'add' adjustment), no evidence
   algorithm_version = fields.IntegerField(name='Algorithm Version', required=True, default=None)
   config_hash = fields.StringField(name='Config Hash', size=64, required=True)
 

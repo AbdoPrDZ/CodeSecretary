@@ -8,12 +8,13 @@ import { api } from '../api';
 import { initials } from '../format';
 import { useTheme, type Theme } from '../theme';
 import { isoDay } from '../timeline';
-import { IconClock, IconFolder, IconLaptop, IconLogo, IconLogOut, IconMenu, IconMonitor, IconMoon, IconPulse,
+import { IconCheck, IconClock, IconFolder, IconLaptop, IconLogo, IconLogOut, IconMenu, IconMonitor, IconMoon, IconPulse,
   IconShield, IconSun, IconX } from './icons';
 import { Button, cx, Segmented, Skeleton } from './ui';
 
-const NAV: { to: '/time' | '/activity' | '/projects' | '/devices' | '/exclusions'; label: string; icon: ReactNode; hint: string }[] = [
+const NAV: { to: '/time' | '/inbox' | '/activity' | '/projects' | '/devices' | '/exclusions'; label: string; icon: ReactNode; hint: string }[] = [
   { to: '/time', label: 'Time', icon: <IconClock />, hint: 'Time per project' },
+  { to: '/inbox', label: 'Inbox', icon: <IconCheck />, hint: 'Unassigned time to review' },
   { to: '/activity', label: 'Activity', icon: <IconPulse />, hint: 'Your day, as collected' },
   { to: '/projects', label: 'Projects', icon: <IconFolder />, hint: 'Projects and rules' },
   { to: '/devices', label: 'Devices', icon: <IconMonitor />, hint: 'Signed-in agents' },

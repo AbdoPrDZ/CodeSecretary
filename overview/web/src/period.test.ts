@@ -28,3 +28,13 @@ describe('periods', () => {
     expect(projectColor(3, null)).toBe(projectColor(3, null));
   });
 });
+
+describe('time inputs', () => {
+  it('round-trips HH:MM on a day and rolls an early end to the next day', async () => {
+    const { atTime, hhmm } = await import('./period');
+    const start = atTime('2026-11-25', '09:30');
+    expect(hhmm(start)).toBe('09:30');
+    const end = atTime('2026-11-25', '00:30', atTime('2026-11-25', '23:30'));
+    expect(Date.parse(end) - Date.parse(atTime('2026-11-25', '23:30'))).toBe(60 * 60 * 1000);
+  });
+});

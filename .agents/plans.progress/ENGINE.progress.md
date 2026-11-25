@@ -4,7 +4,7 @@
 >
 > Tick only when acceptance criteria are met. Format: `- [x] ID — task · YYYY-MM-DD · note`. In progress: `· 🚧`. Blocked: `· ⛔ reason`.
 
-**Current `ALGORITHM_VERSION`:** 1 (2026-11-25, engine v1)
+**Current `ALGORITHM_VERSION`:** 2 (2026-11-25, adjustments; 1 = engine v1)
 
 ## Phase 1
 
@@ -29,7 +29,7 @@
   - Acceptance: golden tests incl. long build while idle
 - [ ] EN-9 — Coverage gaps from heartbeats
   - Acceptance: offline device → `low_confidence` sessions
-- [ ] EN-10 — Adjustments application
+- [x] EN-10 — Adjustments application · 2026-11-25 · `calculate::adjust`: the day's `time_adjustments` (not undone) in id order: `remove` (trim/delete), `reassign` (reassign/split), `add` (manual time, `work_sessions.manual`, no evidence), optional from-project filter, clipped to the day, touching same-project pieces joined; golden `adjustments`; DB test: a correction survives repeated recalculation, an undone one stops applying. `ALGORITHM_VERSION` 2
   - Acceptance: adjustments survive recalculation
 - [x] EN-11 — Transactional writer + versioning · 2026-11-25 · `write.rs`: in the job's transaction (ownership re-checked with `FOR UPDATE`) delete + insert sessions, evidence, assignments; `algorithm_version` + `config_hash` (SHA-256 of version + settings); job marked done in the same commit; DB test: re-run → identical rows
   - Acceptance: re-run → byte-identical output

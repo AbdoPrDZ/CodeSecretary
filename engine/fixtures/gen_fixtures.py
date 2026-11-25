@@ -162,6 +162,35 @@ CASES['point-credit-and-unassigned'] = {
 }
 
 
+def adj(id_, kind, start, end, project=None, from_project=None):
+  return {'id': id_, 'kind': kind, 'start': start, 'end': end, 'project_id': project,
+          'from_project_id': from_project}
+
+
+# User corrections (EN-10), applied in id order: a split (reassign part of a
+# session), a trim (remove part, only from project 2), a remove whose
+# project filter matches nothing, unassigned time moved to a project, and
+# manual time (one entry crossing midnight is cut to this day).
+CASES['adjustments'] = {
+  'local_day': D, 'time_zone': 'UTC',
+  'rules': [rule(1, 1, 'path', API), rule(2, 2, 'path', WEB)],
+  'adjustments': [
+    adj(1, 'reassign', t(D, '09:30'), t(D, '09:45'), project=3),
+    adj(2, 'remove', t(D, '10:15'), t(D, '10:30'), from_project=2),
+    adj(3, 'remove', t(D, '10:00'), t(D, '11:30'), from_project=1),
+    adj(4, 'reassign', t(D, '11:00'), t(D, '11:30'), project=1),
+    adj(5, 'add', t(D, '13:00'), t(D, '14:00'), project=4),
+    adj(6, 'add', t(D, '23:30'), t('2026-11-21', '00:30'), project=4),
+  ],
+  'events': [
+    presence(t(D, '09:00'), t(D, '11:30')),
+    file_focus(t(D, '09:00'), t(D, '10:00'), API),
+    file_focus(t(D, '10:00'), t(D, '11:00'), WEB),
+    focus(t(D, '11:00'), t(D, '11:30'), 'notepad.exe', 'notes.txt'),
+  ],
+}
+
+
 def main() -> None:
   for name, case in CASES.items():
     folder = HERE / name

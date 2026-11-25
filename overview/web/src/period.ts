@@ -62,3 +62,19 @@ export function projectColor(id: number | null, color: string | null | undefined
   if (color) return color;
   return FALLBACK[Math.abs(id) % FALLBACK.length]!;
 }
+
+/** `HH:MM` (24 h, browser zone) of an ISO time, for time inputs. */
+export function hhmm(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** The ISO instant of `HH:MM` on local `day` (browser zone); `24:00` / an end
+ * at or before `start` rolls to the next day. */
+export function atTime(day: string, time: string, after?: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  const [h, min] = time.split(':').map(Number);
+  let t = new Date(y!, m! - 1, d!, h!, min!);
+  if (after && t.getTime() <= Date.parse(after)) t = new Date(y!, m! - 1, d! + 1, h!, min!);
+  return t.toISOString();
+}

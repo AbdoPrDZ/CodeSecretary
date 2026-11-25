@@ -154,6 +154,7 @@ export interface WorkSession {
   seconds: number;
   low_confidence: boolean;
   estimated: boolean;
+  manual: boolean;
   evidence: number;
 }
 
@@ -162,6 +163,75 @@ export interface DaySessions extends JobState {
   time_zone: string;
   range: { start: string; end: string };
   sessions: WorkSession[];
+}
+
+export type AssignMethod = 'user' | 'rule' | 'shared_rule' | 'structural' | 'temporal' | 'ai';
+
+export interface EvidenceEvent {
+  event_id: string;
+  device_id: number;
+  device_name: string | null;
+  event_type: EventType;
+  start: string;
+  end: string | null;
+  repository_root: string | null;
+  repository_remote: string | null;
+  working_directory: string | null;
+  metadata: Record<string, unknown>;
+  assigned_project_id: number | null;
+  method: AssignMethod | null;
+  confidence: number | null;
+  rule_id: number | null;
+  overridden: boolean;
+}
+
+export interface SessionDetail {
+  session: WorkSession & { local_day: string; algorithm_version: number };
+  events: EvidenceEvent[];
+  evidence_total: number;
+  truncated: boolean;
+  methods: Partial<Record<AssignMethod | 'unassigned', number>>;
+  rules: { id: number; project_id: number; signal: RuleSignal; pattern: string }[];
+}
+
+export type AdjustmentKind = 'add' | 'remove' | 'reassign';
+
+export interface Adjustment {
+  id: number;
+  local_day: string;
+  kind: AdjustmentKind;
+  starts_at: string;
+  ends_at: string;
+  project_id: number | null;
+  project_name: string | null;
+  from_project_id: number | null;
+  from_project_name: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface NewAdjustment {
+  kind: AdjustmentKind;
+  start: string;
+  end: string;
+  project_id?: number | null;
+  from_project_id?: number | null;
+  note?: string;
+}
+
+export interface InboxGroup {
+  signal: 'path' | 'app' | 'other';
+  value: string;
+  seconds: number;
+  titles: string[];
+  sessions: { id: number; day: string; start: string; end: string; seconds: number }[];
+}
+
+export interface Inbox extends JobState {
+  groups: InboxGroup[];
+  total_seconds: number;
+  sessions: number;
+  truncated: boolean;
 }
 
 export class ApiError extends Error {
@@ -207,6 +277,15 @@ export const api = {
   time: (start: string, end: string) =>
     request<TimeSummary>('GET', `/api/time?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   sessions: (day: string) => request<DaySessions>('GET', `/api/sessions?day=${encodeURIComponent(day)}`),
+  session: (id: number) => request<SessionDetail>('GET', `/api/sessions/${id}`),
+  assign: (body: { event_ids?: string[]; session_ids?: number[]; project_id?: number | null; clear?: boolean }) =>
+    request<{ events: number }>('POST', '/api/assign', body),
+  adjustments: (day: string) =>
+    request<{ adjustments: Adjustment[] }>('GET', `/api/adjustments?day=${encodeURIComponent(day)}`).then((r) => r.adjustments),
+  addAdjustment: (body: NewAdjustment) => request<{ ids: number[] }>('POST', '/api/adjustments', body),
+  undoAdjustment: (id: number) => request('DELETE', `/api/adjustments/${id}`),
+  inbox: (start: string, end: string) =>
+    request<Inbox>('GET', `/api/inbox?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   devices: () => request<{ devices: Device[] }>('GET', '/api/devices').then((r) => r.devices),
   renameDevice: (id: number, name: string) => request('PATCH', `/api/devices/${id}`, { name }),
   revokeDevice: (id: number) => request('POST', `/api/devices/${id}/revoke`),

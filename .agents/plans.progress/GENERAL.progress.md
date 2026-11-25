@@ -18,7 +18,7 @@
 | M0 — Foundations | In progress | CI, agent skeleton (AG-1, awaiting CI on macOS/Linux), Python warehouse (WH-1R) + `secretary-orm` done, `shared` crate in (SH-1 awaiting CI); engine/overview M0 pending |
 | M1 — Event pipeline end-to-end | In progress | demo works on Windows: agent signs in via Keycloak, uploads heartbeats + presence events (AG-2/3/5/6/7, WH-4/5/8/9, SH-2–6/8 done; AG-4 1 h offline run, WH-6/7/10/11, SH-7, SH-9 (awaits CI), OV M1 left) |
 | M2 — Phase 1 collectors | In progress | Presence, focus, Git tracker, local API, VS Code extension built; AG-8/AG-9 OS checks and AG-11 backfill left |
-| M3 — Engine v1 | In progress | engine v1 runs (EN-1/2/5/6/11/14 done; EN-3/4/7/8/12 in progress); WH-7 enqueue done; Time page shows time per project (OV-7 slice, OV-13) |
+| M3 — Engine v1 | In progress | engine v1 runs (EN-1/2/5/6/10/11/14 done; EN-3/4/7/8/12 in progress); WH-7 enqueue done; Time page shows time per project (OV-7 slice, OV-13) |
 | M4 — Dashboard v1 | Not started | — |
 | M5 — Hardening & validation | Not started | — |
 | Phase 2 — Collectors & AI | Not started | — |
@@ -148,3 +148,4 @@
 | 2026-11-20 | Overview first slice: `overview/api` + `overview/web`, Keycloak sign-in with server-side sessions (`web_sessions`), devices, raw activity timeline, exclusions and pause windows (OV-1, OV-3 done; OV-2, OV-4, OV-5, OV-12 in progress) |
 | 2026-11-21 | Decision D17: projects created by the user, bound to evidence by rules (match preview); repo detection only suggests. Order agreed: Git tracker (AG-10), focus collector (AG-9), projects and rules UI (OV-5), engine (M3) |
 | 2026-11-25 | M3 started, user priority "see time per project": engine v1 (queue, loader, rule + temporal correlation, presence, credit, overlap, sessions, writer, startup re-enqueue; `ALGORITHM_VERSION` 1), ingest enqueue (WH-7), Time page + `/api/time`, `/api/sessions`, time-zone setting (OV-7 slice, OV-13); engine in Compose, CI and the VPS deploy. Dashboard speed: gzip, one-transaction session lookup, query `staleTime`, paged Activity table |
+| 2026-11-25 | Corrections: engine applies `time_adjustments` (EN-10, `ALGORITHM_VERSION` 2, manual sessions); session detail, assign / move / split / trim / delete / add time with undo, inbox with bulk assign and "always" rules (OV-8/9/10, UI pass in the browser left) |

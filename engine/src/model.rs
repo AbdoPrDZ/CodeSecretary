@@ -124,6 +124,9 @@ pub struct Context {
     /// Manual assignments: event → project (`None` = "not project work").
     #[serde(default)]
     pub overrides: BTreeMap<Uuid, Option<i64>>,
+    /// Time-range corrections of this local day.
+    #[serde(default)]
+    pub adjustments: Vec<Adjustment>,
     #[serde(default)]
     pub settings: Settings,
 }
@@ -223,8 +226,43 @@ pub struct Session {
     pub low_confidence: bool,
     #[serde(default)]
     pub estimated: bool,
+    /// Added by the user (an `add` adjustment); has no evidence.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub manual: bool,
     /// Sorted, unique.
     pub evidence: Vec<Uuid>,
+}
+
+fn is_false(v: &bool) -> bool {
+    !*v
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AdjustmentKind {
+    /// Manual time for `project_id`; replaces whatever the range held.
+    Add,
+    /// Drop the range (only from `from_project_id` when set). Trims and
+    /// deletes are removes.
+    Remove,
+    /// Move the range to `project_id` (only from `from_project_id` when set).
+    /// Reassigning and splitting sessions are reassigns.
+    Reassign,
+}
+
+/// A user's time-range correction (`time_adjustments`), anchored to time and
+/// project so it survives recalculation (EN-10).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Adjustment {
+    /// Applied in id order (the order the user made them).
+    pub id: i64,
+    pub kind: AdjustmentKind,
+    pub start: Time,
+    pub end: Time,
+    #[serde(default)]
+    pub project_id: Option<i64>,
+    #[serde(default)]
+    pub from_project_id: Option<i64>,
 }
 
 /// Derived rows for one (user, local day).

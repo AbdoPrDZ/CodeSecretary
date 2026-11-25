@@ -71,6 +71,7 @@ pub async fn replace_day(
                     "project_id": s.project_id, "kind": s.kind.as_str(),
                     "starts_at": s.start, "ends_at": s.end,
                     "low_confidence": s.low_confidence, "estimated": s.estimated,
+                    "manual": s.manual,
                 })
             })
             .collect();
@@ -88,12 +89,12 @@ pub async fn replace_day(
             "WITH s AS (
                  INSERT INTO work_sessions
                      (user_id, local_day, project_id, kind, starts_at, ends_at,
-                      low_confidence, estimated, algorithm_version, config_hash)
+                      low_confidence, estimated, manual, algorithm_version, config_hash)
                  SELECT $1, $2, r.project_id, r.kind, r.starts_at, r.ends_at,
-                        r.low_confidence, r.estimated, $5, $6
+                        r.low_confidence, r.estimated, r.manual, $5, $6
                    FROM jsonb_to_recordset($3) AS r(
                         project_id bigint, kind text, starts_at timestamptz, ends_at timestamptz,
-                        low_confidence boolean, estimated boolean)
+                        low_confidence boolean, estimated boolean, manual boolean)
                  RETURNING id, starts_at)
              INSERT INTO session_evidence (session_id, user_id, event_id)
              SELECT s.id, $1, e.event_id

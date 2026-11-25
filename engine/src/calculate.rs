@@ -14,10 +14,12 @@
 //! 5. Merge same-project pieces separated by ≤ `merge_gap_secs` of presence.
 //! 6. Cut at the local day's bounds (each day owns exactly its own time),
 //!    then drop sessions shorter than `min_session_secs`.
+//! 7. Apply the user's adjustments in the order they were made ([`adjust`]),
+//!    then join touching pieces of the same project.
 //!
 //! Not yet: multi-device "most recent input" priority, waiting time
-//! (needs terminal events, Phase 2), coverage gaps (EN-9), adjustments
-//! (EN-10), Git backfill (EN-13).
+//! (needs terminal events, Phase 2), coverage gaps (EN-9), Git backfill
+//! (EN-13).
 
 use std::collections::BTreeSet;
 
@@ -25,7 +27,9 @@ use secretary_shared::Payload;
 use uuid::Uuid;
 
 use crate::correlate::{Category, Resolved, category, correlate};
-use crate::model::{Assignment, Context, Kind, Output, Session, Settings, Span, Time};
+use crate::model::{
+    Adjustment, AdjustmentKind, Assignment, Context, Kind, Output, Session, Settings, Span, Time,
+};
 
 /// Correlate and calculate: the whole engine for one day, without I/O.
 pub fn run(ctx: &Context) -> Output {
@@ -58,7 +62,11 @@ pub fn run(ctx: &Context) -> Output {
 
     let presence = presence(&sorted);
     let pieces = clip(&timeline(&sorted, &resolved), &presence);
-    let sessions = sessions(&pieces, &presence, &sorted.settings, day);
+    let sessions = adjust(
+        sessions(&pieces, &presence, &sorted.settings, day),
+        &sorted.adjustments,
+        day,
+    );
     Output {
         assignments,
         sessions,
@@ -270,20 +278,108 @@ pub fn sessions(
                 end: span.end,
                 low_confidence: false,
                 estimated: false,
+                manual: false,
                 evidence: p.evidence.into_iter().collect(),
             })
         })
         .collect()
 }
 
+/// Step 7: the user's corrections (`time_adjustments`), clipped to the day.
+///
+/// - `remove` drops the range from matching sessions (trim, delete).
+/// - `reassign` moves the matching parts of the range to `project_id`
+///   (reassign, split).
+/// - `add` replaces whatever the range held with manual time.
+///
+/// "Matching" = every session, or only `from_project_id`'s when set.
+/// Corrections are anchored to time and project, never to session ids, so
+/// they survive recalculation. Touching pieces of the same project are
+/// joined afterwards.
+pub fn adjust(mut sessions: Vec<Session>, adjustments: &[Adjustment], day: Span) -> Vec<Session> {
+    let mut ordered: Vec<&Adjustment> = adjustments.iter().collect();
+    ordered.sort_by_key(|a| a.id);
+    for a in ordered {
+        let Some(range) = Span::new(a.start, a.end).intersect(&day) else {
+            continue;
+        };
+        let matches = |s: &Session| match a.kind {
+            AdjustmentKind::Add => true,
+            _ => a.from_project_id.is_none_or(|f| s.project_id == Some(f)),
+        };
+        let mut next = Vec::with_capacity(sessions.len() + 2);
+        for s in sessions {
+            let span = Span::new(s.start, s.end);
+            let Some(inside) = span.intersect(&range).filter(|_| matches(&s)) else {
+                next.push(s);
+                continue;
+            };
+            let piece = |from: Time, to: Time| Session {
+                start: from,
+                end: to,
+                ..s.clone()
+            };
+            if s.start < inside.start {
+                next.push(piece(s.start, inside.start));
+            }
+            if a.kind == AdjustmentKind::Reassign {
+                next.push(Session {
+                    project_id: a.project_id,
+                    ..piece(inside.start, inside.end)
+                });
+            }
+            if inside.end < s.end {
+                next.push(piece(inside.end, s.end));
+            }
+        }
+        if a.kind == AdjustmentKind::Add {
+            next.push(Session {
+                project_id: a.project_id,
+                kind: Kind::Active,
+                start: range.start,
+                end: range.end,
+                low_confidence: false,
+                estimated: false,
+                manual: true,
+                evidence: Vec::new(),
+            });
+        }
+        next.sort_by_key(|s| s.start);
+        sessions = next;
+    }
+
+    let mut joined: Vec<Session> = Vec::with_capacity(sessions.len());
+    for s in sessions {
+        match joined.last_mut() {
+            Some(last)
+                if last.end == s.start
+                    && last.project_id == s.project_id
+                    && last.kind == s.kind
+                    && last.manual == s.manual =>
+            {
+                last.end = s.end;
+                last.low_confidence |= s.low_confidence;
+                last.estimated |= s.estimated;
+                let mut evidence: BTreeSet<Uuid> = last.evidence.drain(..).collect();
+                evidence.extend(s.evidence);
+                last.evidence = evidence.into_iter().collect();
+            }
+            _ => joined.push(s),
+        }
+    }
+    joined
+}
+
 /// The invariants of ENGINE §7 that hold for this output (tests assert them).
+/// Manual sessions (user-added time) have no evidence and do not count
+/// against presence.
 pub fn check_invariants(ctx: &Context, out: &Output) -> Result<(), String> {
     let mut prev: Option<&Session> = None;
     for s in &out.sessions {
         if s.end <= s.start {
             return Err(format!("empty session at {}", s.start));
         }
-        if s.evidence.is_empty() {
+        if s.evidence.is_empty() && !s.manual {
             return Err(format!("session at {} has no evidence", s.start));
         }
         if let Some(p) = prev
@@ -299,7 +395,12 @@ pub fn check_invariants(ctx: &Context, out: &Output) -> Result<(), String> {
         .filter_map(|p| p.intersect(&day))
         .map(|p| p.len())
         .sum();
-    let active: chrono::TimeDelta = out.sessions.iter().map(|s| s.end - s.start).sum();
+    let active: chrono::TimeDelta = out
+        .sessions
+        .iter()
+        .filter(|s| !s.manual)
+        .map(|s| s.end - s.start)
+        .sum();
     if active > present {
         return Err(format!("active time {active} exceeds presence {present}"));
     }

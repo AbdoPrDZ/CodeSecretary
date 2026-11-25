@@ -19,6 +19,7 @@ import asyncio
 import hmac
 import logging
 import re
+import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -33,7 +34,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from pydantic import BaseModel, ConfigDict, Field
 from secretary_orm import Environment
 
-from secretary_overview import __version__, rules, sessions
+from secretary_overview import __version__, corrections, rules, sessions
 from secretary_overview.config import Config
 from secretary_overview.oidc import Oidc, SignInError
 from secretary_warehouse.db import ping, user_transaction
@@ -76,6 +77,25 @@ class NewExclusion(BaseModel):
   start: str | None = None
   end: str | None = None
   days: list[int] | None = None
+
+
+class NewAdjustment(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  kind: str
+  start: datetime
+  end: datetime
+  project_id: int | None = None
+  from_project_id: int | None = None
+  note: str | None = Field(default=None, max_length=500)
+
+
+class AssignBody(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  event_ids: list[uuid.UUID] = Field(default_factory=list, max_length=corrections.MAX_ASSIGN_EVENTS)
+  session_ids: list[int] = Field(default_factory=list, max_length=1000)
+  project_id: int | None = None
+  # True: remove the overrides (back to automatic assignment).
+  clear: bool = False
 
 
 class TimeZoneBody(BaseModel):
@@ -284,7 +304,7 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
       user = conn.execute('SELECT time_zone FROM users WHERE id = %s', [session.user_id]).fetchone()
       rows = conn.execute(
         """SELECT s.id, s.project_id, p.name AS project_name, p.color AS project_color, s.kind,
-                  s.starts_at, s.ends_at, s.low_confidence, s.estimated,
+                  s.starts_at, s.ends_at, s.low_confidence, s.estimated, s.manual,
                   (SELECT count(*) FROM session_evidence e WHERE e.session_id = s.id) AS evidence
            FROM work_sessions s LEFT JOIN projects p ON p.id = s.project_id
            WHERE s.local_day = %s
@@ -304,10 +324,81 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
         'project_color': r['project_color'], 'kind': r['kind'],
         'start': _iso(r['starts_at']), 'end': _iso(r['ends_at']),
         'seconds': int((r['ends_at'] - r['starts_at']).total_seconds()),
-        'low_confidence': r['low_confidence'], 'estimated': r['estimated'], 'evidence': r['evidence'],
+        'low_confidence': r['low_confidence'], 'estimated': r['estimated'], 'manual': r['manual'],
+        'evidence': r['evidence'],
       } for r in rows],
       **jobs,
     }
+
+  # -- session detail, corrections, inbox (OV-8, OV-9, OV-10) ---------------
+
+  def correction(fn, *args):
+    try:
+      return fn(*args)
+    except corrections.CorrectionError as exc:
+      raise ApiError(exc.status, exc.code) from None
+
+  @app.get('/api/sessions/{session_id}')
+  def session_detail(session_id: int, session: sessions.Session = Depends(current)):
+    """One session with its evidence and how each event was assigned."""
+
+    with user_transaction(db, session.user_id) as conn:
+      detail = corrections.session_detail(conn, session_id)
+    if detail is None:
+      raise ApiError(404, 'not_found')
+    s = detail['session']
+    return _deep({
+      **detail,
+      'session': {**s, 'seconds': int((s['ends_at'] - s['starts_at']).total_seconds())},
+    })
+
+  @app.post('/api/assign')
+  def assign(body: AssignBody, session: sessions.Session = Depends(mutating)):
+    """Assign events, or whole sessions' evidence, to a project (or "not project work")."""
+
+    with user_transaction(db, session.user_id) as conn:
+      return correction(corrections.assign, conn, session.user_id, [str(e) for e in body.event_ids],
+                        body.session_ids, body.project_id, body.clear)
+
+  @app.get('/api/adjustments')
+  def adjustments(day: str, session: sessions.Session = Depends(current)):
+    try:
+      local_day = date.fromisoformat(day)
+    except ValueError:
+      raise ApiError(400, 'invalid_day') from None
+    with user_transaction(db, session.user_id) as conn:
+      return {'adjustments': _deep(corrections.list_adjustments(conn, local_day))}
+
+  @app.post('/api/adjustments', status_code=201)
+  def add_adjustment(body: NewAdjustment, session: sessions.Session = Depends(mutating)):
+    """Reassign / split (``reassign``), trim / delete (``remove``) or add manual time (``add``)."""
+
+    with user_transaction(db, session.user_id) as conn:
+      ids = correction(corrections.add_adjustment, conn, session.user_id, body.kind, body.start, body.end,
+                       body.project_id, body.from_project_id, (body.note or '').strip() or None)
+    return {'ids': ids}
+
+  @app.delete('/api/adjustments/{adjustment_id}')
+  def undo_adjustment(adjustment_id: int, session: sessions.Session = Depends(mutating)):
+    with user_transaction(db, session.user_id) as conn:
+      if not corrections.undo_adjustment(conn, session.user_id, adjustment_id):
+        raise ApiError(404, 'not_found')
+    return {'ok': True}
+
+  @app.get('/api/inbox')
+  def inbox(start: str, end: str, session: sessions.Session = Depends(current)):
+    """Unassigned sessions of a range, grouped by folder or app (OV-10)."""
+
+    try:
+      first, last = date.fromisoformat(start), date.fromisoformat(end)
+    except ValueError:
+      raise ApiError(400, 'invalid_range') from None
+    if last < first or (last - first).days >= MAX_TIME_RANGE_DAYS:
+      raise ApiError(400, 'invalid_range')
+    with user_transaction(db, session.user_id) as conn:
+      result = corrections.inbox(conn, first, last)
+      jobs = _job_state(conn, session.user_id, first, last)
+    return _deep({**result, **jobs})
 
   @app.get('/api/devices')
   def devices(session: sessions.Session = Depends(current)):
@@ -629,6 +720,22 @@ def _iso(value):
   return value
 
 
+def _deep(value):
+  """Rows (and nested rows) to JSON-ready values."""
+
+  if isinstance(value, dict):
+    return {k: _deep(v) for k, v in value.items()}
+  if isinstance(value, (list, tuple)):
+    return [_deep(v) for v in value]
+  if isinstance(value, uuid.UUID):
+    return str(value)
+  if isinstance(value, (datetime, time)):
+    return _iso(value)
+  if isinstance(value, date):
+    return value.isoformat()
+  return value
+
+
 def _jsonable(row: dict) -> dict:
   return {k: (str(v) if k == 'event_id' else _iso(v)) for k, v in row.items()}
 
@@ -730,13 +837,7 @@ def _enqueue_recalc(conn, user_id: int, reason: str) -> None:
   except ZoneInfoNotFoundError:
     zone = ZoneInfo('UTC')
   today = datetime.now(zone).date()
-  conn.execute(
-    """INSERT INTO processing_jobs (user_id, local_day, reason, status, run_after, attempts)
-       SELECT %s, d::date, %s, 'queued', now(), 0
-       FROM generate_series(%s::date, %s::date, interval '1 day') AS d
-       ON CONFLICT (user_id, local_day) WHERE status = 'queued' DO NOTHING""",
-    [user_id, reason, today - timedelta(days=RECALC_DAYS - 1), today],
-  )
+  corrections.enqueue_days(conn, user_id, [today - timedelta(days=i) for i in range(RECALC_DAYS)], reason)
 
 
 def _zone(name: str | None) -> ZoneInfo:

@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { ActivityPage } from './pages/Activity';
 import { DevicesPage } from './pages/Devices';
 import { ExclusionsPage } from './pages/Exclusions';
+import { InboxPage } from './pages/Inbox';
 import { ProjectsPage } from './pages/Projects';
 import { TimePage } from './pages/Time';
 import type { Period } from './period';
@@ -41,6 +42,8 @@ export const timeRoute = createRoute({
   component: TimePage,
 });
 
+const inboxRoute = createRoute({ getParentRoute: () => rootRoute, path: '/inbox', component: InboxPage });
+
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage });
 const exclusionsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -51,7 +54,7 @@ const exclusionsRoute = createRoute({
 const projectsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/projects', component: ProjectsPage });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, timeRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, timeRoute, inboxRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
   defaultPreload: 'intent',
 });
 

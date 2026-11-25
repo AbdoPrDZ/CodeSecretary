@@ -29,18 +29,18 @@
   - Acceptance: new user reaches Today with data in < 10 min
 - [ ] OV-7 — Today timeline + Week grid · 🚧 in progress · 2026-11-25 · first slice: Time page (default route) with day / week / month totals per project from `GET /api/time` (adds up the engine's sessions), per-day stacked bars, the day's session timeline + list (`GET /api/sessions`), recalculating / failed state, time-zone prompt; 4 API tests (totals, privacy, time zone, compression); left: multi-device lanes, session detail (OV-8)
   - Acceptance: matches engine output; multi-device shown
-- [ ] OV-8 — Session detail with evidence
+- [ ] OV-8 — Session detail with evidence · 🚧 in progress · 2026-11-25 · `GET /api/sessions/{id}`: evidence events (≤ 500) with device, assignment method, rule and override flag, method counts, the matching rules; session drawer on the Time page ("why this session"); API test incl. another user → 404; left: a manual UI pass in the browser
   - Acceptance: every session explains itself
-- [ ] OV-9 — Corrections + job enqueue + recalculating state
-  - [ ] Assign event(s)
-  - [ ] Reassign session
-  - [ ] Trim / extend
-  - [ ] Split
-  - [ ] Delete
-  - [ ] Add manual time
-  - [ ] Mapping change → re-enqueue affected days
+- [ ] OV-9 — Corrections + job enqueue + recalculating state · 🚧 in progress · 2026-11-25 · `POST /api/assign` (events or sessions' evidence → `assignment_overrides`, "not project work", clear), `GET/POST/DELETE /api/adjustments` (reassign, remove, add; split at local midnight; undo = `deleted_at`); every change queues its days to run now (`enqueue_days` pulls a queued job forward); drawer actions + corrections card with undo + "Add time"; the engine applies them (EN-10, survives recalculation, DB test); 5 API tests; left: a manual UI pass in the browser
+  - [x] Assign event(s) · 2026-11-25 · overrides; whole sessions via their evidence
+  - [x] Reassign session · 2026-11-25 · `reassign` over the session range, from its project
+  - [x] Trim / extend · 2026-11-25 · trim = `remove` of a part; extend = "Add time" next to it
+  - [x] Split · 2026-11-25 · `reassign` of a part to another project
+  - [x] Delete · 2026-11-25 · `remove` over the session range, from its project
+  - [x] Add manual time · 2026-11-25 · `add` → manual session (no evidence)
+  - [x] Mapping change → re-enqueue affected days · 2026-11-21 · OV-5 (last 30 days); since 2026-11-25 queued days are pulled forward
   - Acceptance: correction visible after recalculation; survives algorithm re-run
-- [ ] OV-10 — Inbox with bulk assign
+- [ ] OV-10 — Inbox with bulk assign · 🚧 in progress · 2026-11-25 · `GET /api/inbox`: unassigned sessions (≤ 1,000) grouped by their most common folder, else app, with titles; Inbox page: assign a group's sessions or "Always" (adds a path/app rule → 30 days recalculated); API test incl. isolation; left: a manual UI pass in the browser; below-threshold items do not exist yet (lowest automatic confidence is temporal 0.7 = the threshold)
   - Acceptance: unassigned + below-threshold items listed
 - [ ] OV-11 — Reports + CSV export
   - Acceptance: CSV totals equal dashboard totals
@@ -90,6 +90,7 @@
 - [ ] OV-44 — Company SSO via Keycloak identity providers
 
 ## Notes
+- 2026-11-25: Corrections deviate from the plan's §5 storage on purpose, following the schema (`database.md`): event assignments are `assignment_overrides` (not `event_assignments` rows with `method = user`; the engine turns them into those), and the plan's trim / split / delete kinds are the schema's `remove` and `reassign` ranges with an optional from-project filter. Corrections crossing a local midnight are stored as one row per day.
 - 2026-11-25: Dashboard speed (user report "loading is too slow"): responses were sent uncompressed (374 kB JS + 63 kB CSS + up to 5,000 events of JSON); added gzip (`GZipMiddleware`, > 1 KB) and `encode zstd gzip` in the VPS Caddyfile. The session lookup was two transactions with an UPDATE on every request; now one transaction, `last_seen_at` written at most every 5 min. The web app now has a default `staleTime` of 30 s (no refetch of a whole day on every focus), and the Activity table renders 300 rows at a time. Not measured on the VPS yet.
 - 2026-11-20: First dashboard slice, chosen by the user: sign-in, devices, raw activity and exclusions/pause windows, local first, then the VPS.
   - **OV-5:** exclusions and pause windows first; projects and rules added 2026-11-21.

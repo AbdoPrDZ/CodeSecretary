@@ -2,9 +2,10 @@
 // only displays durations it was given; it never derives time from events.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-import { api, type DaySessions, type Me, type TimeSummary } from '../api';
+import { api, type DaySessions, type Me, type TimeSummary, type WorkSession } from '../api';
+import { AddTimeDialog, CorrectionsCard, SessionDrawer } from '../components/corrections';
 import { IconChevronLeft, IconChevronRight, IconClock, IconFolder, IconInfo, IconLayers,
   IconSparkles } from '../components/icons';
 import { Button, Card, cx, EmptyState, IconButton, Notice, PageHeader, Segmented, Skeleton, Stat } from '../components/ui';
@@ -38,6 +39,8 @@ export function TimePage() {
     refetchInterval: (q) => ((q.state.data?.pending_days ?? 0) > 0 ? 5_000 : isCurrent ? 60_000 : false),
   });
   const projects = useQuery({ queryKey: ['projects'], queryFn: api.projects, staleTime: 60_000 });
+  const [selected, setSelected] = useState<WorkSession | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const data = summary.data;
   const top = data?.projects[0];
@@ -113,11 +116,19 @@ export function TimePage() {
           </div>
           <div className="space-y-6 xl:col-span-3">
             {period === 'day'
-              ? <DayTimeline data={sessions.data} loading={sessions.isPending} />
+              ? <DayTimeline data={sessions.data} loading={sessions.isPending} onSelect={setSelected} />
               : <ByDay data={data} onPick={(d) => go({ period: 'day', day: d })} />}
           </div>
         </div>
       )}
+
+      {period === 'day' && data && (
+        <div className="mt-6">
+          <CorrectionsCard day={day} onAdd={() => setAdding(true)} />
+        </div>
+      )}
+      {selected && <SessionDrawer session={selected} day={day} onClose={() => setSelected(null)} />}
+      {adding && <AddTimeDialog day={day} onClose={() => setAdding(false)} />}
     </>
   );
 }
@@ -213,7 +224,9 @@ function ByDay({ data, onPick }: { data: TimeSummary; onPick: (day: string) => v
   );
 }
 
-function DayTimeline({ data, loading }: { data: DaySessions | undefined; loading: boolean }) {
+function DayTimeline({ data, loading, onSelect }: {
+  data: DaySessions | undefined; loading: boolean; onSelect: (s: WorkSession) => void;
+}) {
   if (loading || !data) return <Skeleton className="h-64 rounded-2xl" />;
   const start = Date.parse(data.range.start);
   const span = Date.parse(data.range.end) - start;
@@ -231,12 +244,14 @@ function DayTimeline({ data, loading }: { data: DaySessions | undefined; loading
         </div>
         <div className="relative h-10 overflow-hidden rounded-xl bg-zinc-100/80 ring-1 ring-zinc-200/60 ring-inset dark:bg-zinc-800/50 dark:ring-zinc-800">
           {data.sessions.map((s) => (
-            <div key={s.id} className="absolute inset-y-1.5 rounded-[4px]"
+            <button key={s.id} type="button" onClick={() => onSelect(s)}
+                 className="absolute inset-y-1.5 rounded-[4px] transition hover:brightness-110"
                  title={`${s.project_name ?? 'Unassigned'} ${clock(s.start)} - ${clock(s.end)} (${duration(s.seconds)})`}
                  style={{ left: `${pct(s.start)}%`, width: `${Math.max(pct(s.end) - pct(s.start), 0.2)}%`,
                    background: projectColor(s.project_id, s.project_color) }} />
           ))}
         </div>
+        <p className="mt-2 text-xs text-zinc-400">Click a session to see why it was counted and to correct it.</p>
       </div>
       <div className="scroll-thin max-h-[28rem] overflow-auto border-t border-zinc-100 dark:border-zinc-800/80">
         <table className="w-full text-left text-sm">
@@ -250,7 +265,7 @@ function DayTimeline({ data, loading }: { data: DaySessions | undefined; loading
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
             {data.sessions.map((s) => (
-              <tr key={s.id}>
+              <tr key={s.id} onClick={() => onSelect(s)} className="cursor-pointer transition hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                 <td className="py-2 pr-3 pl-5 whitespace-nowrap text-zinc-600 tabular-nums dark:text-zinc-400">
                   {clock(s.start)} - {clock(s.end)}
                 </td>
@@ -259,10 +274,11 @@ function DayTimeline({ data, loading }: { data: DaySessions | undefined; loading
                     <span className="size-2 rounded-full" style={{ background: projectColor(s.project_id, s.project_color) }} />
                     <span className={cx(s.project_id === null && 'text-zinc-500')}>{s.project_name ?? 'Unassigned'}</span>
                     {s.kind === 'waiting' && <span className="text-xs text-zinc-400">waiting</span>}
+                    {s.manual && <span className="text-xs text-zinc-400">manual</span>}
                   </span>
                 </td>
                 <td className="py-2 pr-3 text-right font-medium tabular-nums">{duration(s.seconds)}</td>
-                <td className="hidden py-2 pr-5 text-right text-zinc-500 tabular-nums sm:table-cell">{plural(s.evidence, 'event')}</td>
+                <td className="hidden py-2 pr-5 text-right text-zinc-500 tabular-nums sm:table-cell">{s.manual ? '-' : plural(s.evidence, 'event')}</td>
               </tr>
             ))}
           </tbody>

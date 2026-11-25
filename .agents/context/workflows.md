@@ -55,6 +55,12 @@ Status: implemented (WH-7, EN-1/2/11/14).
 
 User edits in Overview are stored as inputs (user assignments, `time_adjustments`, mappings), never as edits to derived sessions. Engine reapplies them on every recalculation. Repeated corrections produce rule proposals (Phase 2).
 
+Status: implemented (OV-9, EN-10; rule proposals planned).
+- **Event-anchored:** "assign these events or sessions" writes `assignment_overrides` (a project, or none = "not project work"). The override follows the events wherever recalculation places them.
+- **Time-anchored:** move, split, trim, delete and add time write `time_adjustments` ranges (`reassign`, `remove`, `add`), with an optional from-project filter. Each local day gets its own row, and undo sets `deleted_at`.
+- **Applied last:** the engine applies adjustments after building sessions, in the order they were made. `add` replaces the range with a manual session.
+- **Recalculation:** every correction queues its days to run now. The Inbox groups unassigned sessions by folder or app; "Always" adds a rule instead, which recalculates 30 days.
+
 ## Team Submission (Phase 3)
 
 Member reviews shared-project totals for a period → submits → submission becomes visible to the team and locks. Admin approves or requests changes. If recalculation later changes a submitted total, the member is asked to resubmit (creates a revision).

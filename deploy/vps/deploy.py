@@ -7,9 +7,9 @@
 2. Keeps, in `deploy/vps/secrets/` (git-ignored): `.env.deploy` with the
    deploy-owned values (public IP, image tag, Keycloak admin password, the
    RLS-bound app login's password) and a private CA + server certificate.
-3. Builds `secretary-warehouse:<git sha>`, `secretary-overview:<git sha>`
-   and `secretary-engine:<git sha>` locally and streams them into
-   `docker load` on the VPS. Keycloak and Caddy are pulled by the VPS.
+3. Builds `secretary-warehouse:beta`, `secretary-overview:beta` and
+   `secretary-engine:beta` locally (pre-production: one moving tag) and
+   streams them into `docker load` on the VPS. Keycloak and Caddy are pulled by the VPS.
 4. Database settings are the server owner's `DIR/.env.docker`
    (`SECRETARY_WH_DB_*`, `SECRETARY_KC_DB_*`); the databases and their owner
    logins are created by the server owner. Read on the VPS only, the deploy
@@ -42,6 +42,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SECRETS = HERE / 'secrets'
 DEFAULT_DIR = '/opt/secretary'
+#: Tag of every deployed image until the project is in production.
+IMAGE_TAG = 'beta'
 PG_CONTAINER = 'it-pg-db'
 KEYCLOAK_UID = 1000  # `keycloak` user in quay.io/keycloak/keycloak
 
@@ -173,9 +175,8 @@ def main() -> int:
   if not remote.startswith('/opt/') or ' ' in remote:
     sys.exit('DIR in .ssh.env must be a folder under /opt/ without spaces')
   SECRETS.mkdir(exist_ok=True)
-  tag = sh('git', 'rev-parse', '--short', 'HEAD')
-  if sh('git', 'status', '--porcelain', '--', 'warehouse', 'orm', 'overview', 'engine', 'shared'):
-    tag += '-dirty'
+  # Pre-production: every deploy replaces the `beta` images (no per-commit tags).
+  tag = IMAGE_TAG
 
   step('certificates')
   subprocess.run([sys.executable, str(HERE / 'make_certs.py'), ip, str(SECRETS / 'certs')], check=True)
