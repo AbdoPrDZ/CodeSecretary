@@ -6,8 +6,9 @@ import { DevicesPage } from './pages/Devices';
 import { ExclusionsPage } from './pages/Exclusions';
 import { InboxPage } from './pages/Inbox';
 import { ProjectsPage } from './pages/Projects';
+import { ReportsPage } from './pages/Reports';
 import { TimePage } from './pages/Time';
-import type { Period } from './period';
+import { type Period, periodRange } from './period';
 import { isoDay } from './timeline';
 
 const rootRoute = createRootRoute({ component: Layout });
@@ -42,6 +43,19 @@ export const timeRoute = createRoute({
   component: TimePage,
 });
 
+export const reportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reports',
+  validateSearch: (search: Record<string, unknown>): { start: string; end: string } => {
+    const month = periodRange('month', isoDay(new Date()));
+    return {
+      start: typeof search.start === 'string' && DAY.test(search.start) ? search.start : month.start,
+      end: typeof search.end === 'string' && DAY.test(search.end) ? search.end : month.end,
+    };
+  },
+  component: ReportsPage,
+});
+
 const inboxRoute = createRoute({ getParentRoute: () => rootRoute, path: '/inbox', component: InboxPage });
 
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage });
@@ -54,7 +68,7 @@ const exclusionsRoute = createRoute({
 const projectsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/projects', component: ProjectsPage });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, timeRoute, inboxRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, timeRoute, inboxRoute, reportsRoute, activityRoute, projectsRoute, devicesRoute, exclusionsRoute]),
   defaultPreload: 'intent',
 });
 

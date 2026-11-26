@@ -42,9 +42,9 @@
   - Acceptance: correction visible after recalculation; survives algorithm re-run
 - [ ] OV-10 — Inbox with bulk assign · 🚧 in progress · 2026-11-25 · `GET /api/inbox`: unassigned sessions (≤ 1,000) grouped by their most common folder, else app, with titles; Inbox page: assign a group's sessions or "Always" (adds a path/app rule → 30 days recalculated); API test incl. isolation; left: a manual UI pass in the browser; below-threshold items do not exist yet (lowest automatic confidence is temporal 0.7 = the threshold)
   - Acceptance: unassigned + below-threshold items listed
-- [ ] OV-11 — Reports + CSV export
+- [x] OV-11 — Reports + CSV export · 2026-11-26 · `GET /api/reports` (up to 366 days, project + unassigned filter, totals added up by the API) and `GET /api/reports/export.csv` (per project / day / session, total row, UTF-8 BOM, formula-safe names) built from the same filtered summary; Reports page (presets, custom range, project chips, CSV rows choice); tests: CSV totals = `/api/time` totals for every grouping and a filter, isolation, ranges
   - Acceptance: CSV totals equal dashboard totals
-- [ ] OV-12 — Privacy: data view, export, delete · 🚧 in progress · 2026-11-20 · data view: Activity page (per-device day timeline of raw events in the browser's zone + event list with metadata; no totals); left: export, delete
+- [ ] OV-12 — Privacy: data view, export, delete · 🚧 in progress · 2026-11-20 · data view: Activity page (per-device day timeline of raw events in the browser's zone + event list with metadata; no totals); export + delete 2026-11-26: "Your data" card on the Privacy page (download NDJSON; delete one day, one device or everything, with a confirm dialog and typing DELETE for everything), `GET /api/privacy/export.ndjson`, `POST /api/privacy/delete` (CSRF, `confirm: true`, counts only in the log); left: the raw archive part of "everywhere" (WH-6, WH-12) and a manual UI pass
   - Acceptance: delete removes data everywhere
 - [x] OV-13 — Settings: time zone (re-enqueue on change) · 2026-11-25 · `PUT /api/me/time_zone` (validated IANA name, CSRF) re-queues the last 30 days; the Time page offers the browser's zone when it differs; test: day bounds follow the new zone. No full settings page yet
   - Acceptance: day boundaries correct after change

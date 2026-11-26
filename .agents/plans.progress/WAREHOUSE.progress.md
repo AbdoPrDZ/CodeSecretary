@@ -44,9 +44,9 @@
   - Acceptance: partitions exist 3 months ahead
 
 ### M4
-- [ ] WH-12 — Privacy delete procedure (user/day/device/all) incl. archive
+- [ ] WH-12 — Privacy delete procedure (user/day/device/all) incl. archive · 🚧 in progress · 2026-11-26 · `app_privacy_delete(scope, day, device)` in `post.sql` (SECURITY DEFINER, user from `app_current_user_id()`; the app role still has no DELETE on events): day (local day + neighbours queued), device (events + coverage gaps), all (events, derived rows, corrections, AI rows, jobs; a running day re-queued); assignments, evidence and overrides of deleted events go at once, the engine rewrites the queued days; `secretary_warehouse.privacy.delete`; tests via the dashboard API (scopes, isolation, no direct DELETE, no tenant = refused); left: archive objects (no archive until WH-6) and deleting the account itself ("user" scope: Keycloak sessions, devices, projects)
   - Acceptance: data absent from DB and archive; derived data recalculated
-- [ ] WH-13 — Data export (raw events as NDJSON)
+- [x] WH-13 — Data export (raw events as NDJSON) · 2026-11-26 · `secretary_warehouse.privacy.export_events`: server-side cursor through RLS, one JSON object per event with device, times, hints and metadata, oldest first; streamed by `GET /api/privacy/export.ndjson`; test: export = DB rows
   - Acceptance: export matches DB contents
 
 ### M5
@@ -69,6 +69,7 @@
 - [ ] WH-31 — Self-hosting: configurable object store, migrations on startup, env docs
 
 ## Notes
+- 2026-11-26: Privacy delete keeps the user's own corrections (`time_adjustments`) for day and device scopes: they are inputs the user made, not collected data. Only "all" removes them. Sessions of affected days are not deleted directly; the engine rewrites them from the remaining events (it always replaces a day, also with zero events).
 - 2026-11-06: MinIO images are no longer published (pull denied). Removed from compose; pick an S3-compatible store in WH-6.
 - 2026-11-06: CI `server` and `compose` jobs not yet run on GitHub (repo not pushed).
 - 2026-11-07: Decision D14 — Keycloak replaces warehouse-issued device tokens. WH-4 rescoped.

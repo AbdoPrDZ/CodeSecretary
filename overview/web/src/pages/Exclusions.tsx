@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import { api, type Exclusion, type ExclusionKind } from '../api';
+import { YourData } from '../components/YourData';
 import { IconAppWindow, IconClock, IconFolder, IconGlobe, IconPause, IconShield, IconTrash } from '../components/icons';
 import { Button, Card, cx, EmptyState, ErrorText, IconButton, Input, Notice, PageHeader, Segmented,
   Skeleton } from '../components/ui';
@@ -80,6 +81,9 @@ export function ExclusionsPage() {
             </ul>
           )}
         </Card>
+      </div>
+      <div className="mt-6">
+        <YourData />
       </div>
     </>
   );

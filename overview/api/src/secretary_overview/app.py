@@ -26,17 +26,18 @@ from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from secretary_orm import Environment
 
-from secretary_overview import __version__, corrections, rules, sessions
+from secretary_overview import __version__, corrections, reports, rules, sessions
 from secretary_overview.config import Config
 from secretary_overview.oidc import Oidc, SignInError
+from secretary_warehouse import privacy
 from secretary_warehouse.db import ping, user_transaction
 
 logger = logging.getLogger('secretary_overview.http')
@@ -96,6 +97,15 @@ class AssignBody(BaseModel):
   project_id: int | None = None
   # True: remove the overrides (back to automatic assignment).
   clear: bool = False
+
+
+class PrivacyDelete(BaseModel):
+  model_config = ConfigDict(extra='forbid')
+  scope: str
+  day: date | None = None
+  device_id: int | None = None
+  # The dashboard asks the user to confirm; the API wants it said explicitly too.
+  confirm: bool = False
 
 
 class TimeZoneBody(BaseModel):
@@ -271,26 +281,45 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
   def time_summary(start: str, end: str, session: sessions.Session = Depends(current)):
     """The engine's results per project and day for local days ``start``..``end``."""
 
-    try:
-      first, last = date.fromisoformat(start), date.fromisoformat(end)
-    except ValueError:
-      raise ApiError(400, 'invalid_range') from None
-    if last < first or (last - first).days >= MAX_TIME_RANGE_DAYS:
-      raise ApiError(400, 'invalid_range')
+    first, last = report_range(start, end, MAX_TIME_RANGE_DAYS)
     with user_transaction(db, session.user_id) as conn:
-      rows = conn.execute(
-        """SELECT local_day, project_id, count(*) AS sessions,
-                  sum(extract(epoch FROM ends_at - starts_at))::bigint AS seconds
-           FROM work_sessions
-           WHERE local_day BETWEEN %s AND %s AND kind = 'active'
-           GROUP BY local_day, project_id""",
-        [first, last],
-      ).fetchall()
-      projects = {p['id']: p for p in conn.execute(
-        'SELECT id, name, color, archived_at FROM projects').fetchall()}
-      user = conn.execute('SELECT time_zone FROM users WHERE id = %s', [session.user_id]).fetchone()
-      jobs = _job_state(conn, session.user_id, first, last)
-    return _time_summary(first, last, rows, projects, user['time_zone'], jobs)
+      return reports.load_summary(conn, session.user_id, first, last)
+
+  # -- reports and CSV export (OV-11) ----------------------------------------
+
+  def report_range(start: str, end: str, max_days: int) -> tuple[date, date]:
+    try:
+      return reports.parse_range(start, end, max_days)
+    except reports.ReportError as exc:
+      raise ApiError(400, exc.code) from None
+
+  @app.get('/api/reports')
+  def report(start: str, end: str, project: list[int] | None = Query(default=None), unassigned: bool = True,
+             session: sessions.Session = Depends(current)):
+    """The same totals as ``/api/time`` for ranges up to a year, optionally
+    limited to some projects (the CSV export takes the same filter)."""
+
+    first, last = report_range(start, end, reports.MAX_REPORT_DAYS)
+    with user_transaction(db, session.user_id) as conn:
+      summary = reports.load_summary(conn, session.user_id, first, last)
+    return reports.filtered(summary, set(project) if project else None, unassigned)
+
+  @app.get('/api/reports/export.csv')
+  def report_csv(start: str, end: str, group: str = 'project', project: list[int] | None = Query(default=None),
+                 unassigned: bool = True, session: sessions.Session = Depends(current)):
+    """The report as CSV: per project, per day and project, or per session."""
+
+    first, last = report_range(start, end, reports.MAX_REPORT_DAYS)
+    try:
+      with user_transaction(db, session.user_id) as conn:
+        text = reports.export_csv(conn, session.user_id, first, last, group,
+                                  set(project) if project else None, unassigned)
+    except reports.ReportError as exc:
+      raise ApiError(400, exc.code) from None
+    name = f'codesecretary-{group}s-{first.isoformat()}-{last.isoformat()}.csv'
+    # BOM: spreadsheet apps then read non-ASCII project names as UTF-8.
+    return Response('\ufeff' + text, media_type='text/csv; charset=utf-8',
+                    headers={'Content-Disposition': f'attachment; filename="{name}"'})
 
   @app.get('/api/sessions')
   def day_sessions(day: str, session: sessions.Session = Depends(current)):
@@ -311,7 +340,7 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
            ORDER BY s.starts_at""",
         [local_day],
       ).fetchall()
-      jobs = _job_state(conn, session.user_id, local_day, local_day)
+      jobs = reports.job_state(conn, session.user_id, local_day, local_day)
     zone = _zone(user['time_zone'])
     start = datetime.combine(local_day, time.min, zone).astimezone(UTC)
     end = datetime.combine(local_day + timedelta(days=1), time.min, zone).astimezone(UTC)
@@ -397,8 +426,34 @@ def create_app(env: Environment, config: Config, oidc: Oidc | None = None) -> Fa
       raise ApiError(400, 'invalid_range')
     with user_transaction(db, session.user_id) as conn:
       result = corrections.inbox(conn, first, last)
-      jobs = _job_state(conn, session.user_id, first, last)
+      jobs = reports.job_state(conn, session.user_id, first, last)
     return _deep({**result, **jobs})
+
+  # -- privacy: export and delete (OV-12, WH-12, WH-13) ------------------------
+
+  @app.get('/api/privacy/export.ndjson')
+  def privacy_export(session: sessions.Session = Depends(current)):
+    """All of the caller's raw events as NDJSON (streamed)."""
+
+    name = f'codesecretary-events-{date.today().isoformat()}.ndjson'
+    return StreamingResponse(privacy.export_events(db, session.user_id), media_type='application/x-ndjson',
+                             headers={'Content-Disposition': f'attachment; filename="{name}"'})
+
+  @app.post('/api/privacy/delete')
+  def privacy_delete(body: PrivacyDelete, session: sessions.Session = Depends(mutating)):
+    """Delete collected events of a local day, a device, or all, and what was
+    derived from them; the engine recalculates the affected days."""
+
+    if not body.confirm:
+      raise ApiError(400, 'confirm_required')
+    try:
+      with user_transaction(db, session.user_id) as conn:
+        result = privacy.delete(conn, body.scope, body.day, body.device_id)
+    except privacy.PrivacyError as exc:
+      raise ApiError(404 if exc.code == 'device_not_found' else 400, exc.code) from None
+    # Counts only: never what was deleted.
+    logger.info('privacy delete', extra={'scope': body.scope, **result})
+    return result
 
   @app.get('/api/devices')
   def devices(session: sessions.Session = Depends(current)):
@@ -845,64 +900,6 @@ def _zone(name: str | None) -> ZoneInfo:
     return ZoneInfo(name or 'UTC')
   except (ZoneInfoNotFoundError, ValueError):
     return ZoneInfo('UTC')
-
-
-def _job_state(conn, user_id: int, first: date, last: date) -> dict:
-  """Engine queue state for the user's days (``processing_jobs`` has no RLS: filter by user)."""
-
-  row = conn.execute(
-    """SELECT count(*) FILTER (WHERE status IN ('queued', 'running')) AS pending,
-              count(*) FILTER (WHERE status = 'failed') AS failed,
-              max(updated_at) FILTER (WHERE status = 'done') AS last_done
-       FROM processing_jobs
-       WHERE user_id = %s AND local_day BETWEEN %s AND %s""",
-    [user_id, first, last],
-  ).fetchone()
-  return {'pending_days': row['pending'], 'failed_days': row['failed'],
-          'calculated_at': _iso(row['last_done'])}
-
-
-def _time_summary(first: date, last: date, rows: list[dict], projects: dict, time_zone: str,
-                  jobs: dict) -> dict:
-  """Adds up the engine's session lengths (reporting); never derives time from events."""
-
-  days: dict[date, dict] = {first + timedelta(days=i): {} for i in range((last - first).days + 1)}
-  totals: dict[int | None, dict] = {}
-  for r in rows:
-    key = r['project_id']
-    days[r['local_day']][key] = days[r['local_day']].get(key, 0) + r['seconds']
-    t = totals.setdefault(key, {'seconds': 0, 'sessions': 0, 'days': 0})
-    t['seconds'] += r['seconds']
-    t['sessions'] += r['sessions']
-    t['days'] += 1
-
-  def label(pid: int) -> dict:
-    p = projects.get(pid) or {}
-    return {'project_id': pid, 'name': p.get('name'), 'color': p.get('color'),
-            'archived': p.get('archived_at') is not None}
-
-  project_totals = sorted(
-    ({**label(pid), **t} for pid, t in totals.items() if pid is not None),
-    key=lambda p: (-p['seconds'], p['name'] or ''),
-  )
-  unassigned = totals.get(None, {'seconds': 0})
-  return {
-    'start': first.isoformat(),
-    'end': last.isoformat(),
-    'time_zone': time_zone,
-    'total_seconds': sum(t['seconds'] for t in totals.values()),
-    'assigned_seconds': sum(p['seconds'] for p in project_totals),
-    'unassigned_seconds': unassigned['seconds'],
-    'projects': project_totals,
-    'days': [{
-      'day': d.isoformat(),
-      'total_seconds': sum(v.values()),
-      'unassigned_seconds': v.get(None, 0),
-      'projects': [{'project_id': pid, 'seconds': sec} for pid, sec in sorted(
-        ((pid, sec) for pid, sec in v.items() if pid is not None), key=lambda x: -x[1])],
-    } for d, v in days.items()],
-    **jobs,
-  }
 
 
 def _project(row: dict) -> dict:

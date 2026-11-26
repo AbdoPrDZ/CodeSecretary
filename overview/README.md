@@ -48,6 +48,10 @@ Session cookie (`sec_session`, HTTP-only) from `/auth/login` → Keycloak →
 | `POST /api/assign` | Assign events or sessions' evidence to a project, to "not project work", or back to automatic |
 | `GET/POST /api/adjustments`, `DELETE /api/adjustments/{id}` | Time-range corrections (`reassign`, `remove`, `add`) of a day; delete = undo |
 | `GET /api/inbox?start=&end=` | Unassigned sessions grouped by folder or app |
+| `GET /api/privacy/export.ndjson` | All of the user's raw events, one JSON object per line (streamed) |
+| `POST /api/privacy/delete` | `{scope: day\|device\|all, day?, device_id?, confirm: true}`: delete collected events and what was derived from them; returns counts |
+| `GET /api/reports?start=&end=&project=&unassigned=` | Totals per project and day for up to a year, optionally limited to some projects |
+| `GET /api/reports/export.csv?start=&end=&group=project\|day\|session&project=&unassigned=` | The same report as CSV, with a total row |
 | `GET /api/devices`, `PATCH /api/devices/{id}`, `POST /api/devices/{id}/revoke` | Devices; a revoked device is refused by the warehouse within a minute |
 | `GET /api/activity?day=YYYY-MM-DD&tz=Area/City` | Raw events of a local day (at most 5,000), no totals |
 | `GET/POST /api/projects`, `PATCH/DELETE /api/projects/{id}` | Projects (name, client, billable, hourly rate, currency, color, archived) with their rules |

@@ -160,6 +160,97 @@ BEGIN
 END
 $$;
 
+-- Privacy delete (WH-12): removes the caller's collected activity of one local
+-- day, one device, or everything, and what was derived from it, then queues
+-- the affected days so the engine rewrites their sessions. It runs as the
+-- owner because the app role cannot delete events. The user comes from
+-- app_current_user_id(), never from a parameter.
+--   day:    events starting in the local day (user's zone); the day and its
+--           neighbours are recalculated (intervals can cross midnight).
+--   device: all events and coverage gaps of one of the caller's devices.
+--   all:    every event and every derived row and correction; projects,
+--           rules, exclusions, devices and the account stay.
+-- No raw archive exists yet (WH-6): when it does, its objects go here too.
+CREATE OR REPLACE FUNCTION app_privacy_delete(p_scope text, p_day date, p_device_id bigint)
+    RETURNS TABLE (deleted_events bigint, queued_days integer)
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+AS $$
+DECLARE
+    uid bigint := app_current_user_id();
+    tz text;
+    ids uuid[] := '{}';
+    affected date[] := '{}';
+    n bigint := 0;
+    q integer := 0;
+BEGIN
+    IF uid IS NULL THEN
+        RAISE EXCEPTION 'no current user' USING ERRCODE = '42501';
+    END IF;
+    SELECT coalesce(time_zone, 'UTC') INTO tz FROM users WHERE id = uid;
+
+    IF p_scope = 'day' THEN
+        IF p_day IS NULL THEN
+            RAISE EXCEPTION 'day required' USING ERRCODE = '22023';
+        END IF;
+        WITH gone AS (
+            DELETE FROM activity_events
+            WHERE user_id = uid
+              AND server_adjusted_start >= (p_day::timestamp AT TIME ZONE tz)
+              AND server_adjusted_start < ((p_day + 1)::timestamp AT TIME ZONE tz)
+            RETURNING event_id
+        )
+        SELECT coalesce(array_agg(event_id), '{}') INTO ids FROM gone;
+        affected := ARRAY[p_day - 1, p_day, p_day + 1];
+    ELSIF p_scope = 'device' THEN
+        IF NOT EXISTS (SELECT 1 FROM devices WHERE id = p_device_id AND user_id = uid) THEN
+            RAISE EXCEPTION 'unknown device' USING ERRCODE = 'P0002';
+        END IF;
+        WITH gone AS (
+            DELETE FROM activity_events
+            WHERE user_id = uid AND device_id = p_device_id
+            RETURNING event_id, (server_adjusted_start AT TIME ZONE tz)::date AS local_day
+        )
+        SELECT coalesce(array_agg(event_id), '{}'), coalesce(array_agg(DISTINCT local_day), '{}')
+        INTO ids, affected FROM gone;
+        DELETE FROM coverage_gaps WHERE user_id = uid AND device_id = p_device_id;
+    ELSIF p_scope = 'all' THEN
+        DELETE FROM activity_events WHERE user_id = uid;
+        GET DIAGNOSTICS n = ROW_COUNT;
+        DELETE FROM work_sessions WHERE user_id = uid;  -- session_evidence cascades
+        DELETE FROM event_assignments WHERE user_id = uid;
+        DELETE FROM coverage_gaps WHERE user_id = uid;
+        DELETE FROM assignment_overrides WHERE user_id = uid;
+        DELETE FROM time_adjustments WHERE user_id = uid;
+        DELETE FROM ai_classifications WHERE user_id = uid;
+        DELETE FROM rule_proposals WHERE user_id = uid;
+        DELETE FROM processing_jobs WHERE user_id = uid AND status <> 'running';
+        -- A job running now may have read events before this delete: run its
+        -- day again so it ends empty.
+        SELECT coalesce(array_agg(DISTINCT local_day), '{}') INTO affected
+        FROM processing_jobs WHERE user_id = uid AND status = 'running';
+    ELSE
+        RAISE EXCEPTION 'invalid scope' USING ERRCODE = '22023';
+    END IF;
+
+    IF p_scope <> 'all' THEN
+        n := cardinality(ids);
+        DELETE FROM event_assignments WHERE user_id = uid AND event_id = ANY(ids);
+        DELETE FROM session_evidence WHERE user_id = uid AND event_id = ANY(ids);
+        DELETE FROM assignment_overrides WHERE user_id = uid AND event_id = ANY(ids);
+    END IF;
+
+    IF cardinality(affected) > 0 THEN
+        INSERT INTO processing_jobs (user_id, local_day, reason, status, run_after, attempts)
+        SELECT uid, d, 'privacy_delete', 'queued', now(), 0 FROM unnest(affected) AS d
+        ON CONFLICT (user_id, local_day) WHERE status = 'queued'
+        DO UPDATE SET run_after = LEAST(processing_jobs.run_after, EXCLUDED.run_after),
+                      reason = EXCLUDED.reason, updated_at = now();
+        q := cardinality(affected);
+    END IF;
+    RETURN QUERY SELECT n, q;
+END
+$$;
+
 DO $$
 DECLARE
     fn text;
@@ -168,7 +259,8 @@ BEGIN
         'app_workspace_role(bigint)', 'app_is_member(bigint)', 'app_is_admin(bigint)',
         'app_workspace_has_members(bigint)', 'app_can_view_team_submissions(bigint)',
         'app_resolve_identity(text, text, text, text)', 'app_ensure_event_partitions(integer, integer)',
-        'app_web_session_user(text)', 'app_enqueue_uncalculated_days(integer, integer, text)'
+        'app_web_session_user(text)', 'app_enqueue_uncalculated_days(integer, integer, text)',
+        'app_privacy_delete(text, date, bigint)'
     ] LOOP
         EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO secretary_app', fn);

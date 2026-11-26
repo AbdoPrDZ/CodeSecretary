@@ -44,4 +44,4 @@ Raw events, evidence, titles, URLs, commands, personal projects, and unsubmitted
 - TLS everywhere; encryption at rest; application-level encryption of sensitive metadata fields (Phase 2).
 - **Never log event metadata.**
 - AI is off by default; when on, only minimal redacted fields are sent and every request is logged for the user.
-- Users can export and delete all their data.
+- Users can export and delete all their data: NDJSON export, and delete by day, device or everything through `app_privacy_delete` (see [workflows](../workflows.md)). The app role has no DELETE grant on `activity_events`.

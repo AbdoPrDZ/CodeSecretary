@@ -37,7 +37,7 @@ Status: implemented (WH-4, WH-5, WH-8, WH-9). Source: `warehouse/src/secretary_w
 
 ## User API Behaviour
 
-Status: implemented for the first slice (OV-1–5, OV-12 data view, OV-7 time per project, OV-13 time zone). Source: `overview/api/src/secretary_overview/`; route list in `overview/README.md`.
+Status: implemented for the first slice (OV-1–5, OV-12 data view, OV-7 time per project, OV-8 to OV-10 corrections, OV-11 reports, OV-13 time zone). Source: `overview/api/src/secretary_overview/`; route list in `overview/README.md`.
 
 - **Sign-in:** `/auth/login` → Keycloak (confidential `secretary-dashboard`, auth code + PKCE) → `/auth/callback`.
   - State, nonce and the PKCE verifier sit in a 10-minute HMAC-signed cookie.
@@ -53,6 +53,8 @@ Status: implemented for the first slice (OV-1–5, OV-12 data view, OV-7 time pe
 - **Time** (`/api/time`, `/api/sessions`) only reads `work_sessions` and adds up their lengths per project and day (reporting). It never derives time from events.
   - Days are the user's `time_zone` local days. Ranges are at most 92 days.
   - Each response carries the user's engine queue state (`pending_days`, `failed_days`), read from `processing_jobs`, which has no RLS, so it is filtered by the session user explicitly.
+- **Reports:** `GET /api/reports` (ranges up to a year, optional project filter) and `GET /api/reports/export.csv` (per project, day or session) share one server-side summary, so the CSV total equals the page total. Totals are added up by the API from `work_sessions`, never in the browser. Project names that look like spreadsheet formulas are prefixed with `'`.
+- **Privacy:** `GET /api/privacy/export.ndjson` streams the caller's raw events; `POST /api/privacy/delete` (`scope` day / device / all, `confirm: true`, CSRF) calls the warehouse procedure and returns counts only.
 - **Corrections:** `POST /api/assign`, `/api/adjustments` and `GET /api/sessions/{id}`, `GET /api/inbox`. They only write engine inputs, never derived rows. Project ids must be visible to the caller, and unknown or foreign events are silently skipped (RLS).
 - **Time zone** (`PUT /api/me/time_zone`): the zone the engine cuts days in. A change queues the last 30 days.
 - **Performance:** responses over 1 KB are gzip-compressed. The session lookup is one transaction and writes `last_seen_at` at most every 5 min.

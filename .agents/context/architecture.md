@@ -63,7 +63,7 @@ Status: implemented (OV-1 scaffold, first slice). Source: `overview/`.
 - **One image** (`overview/Dockerfile`): `secretary-overview` (FastAPI) serves the built React app (`STATIC_DIR`) on `:8090`. The same origin means no CORS, and the cookie stays first-party.
 - **Database:** the API imports the warehouse's ORM models and RLS helpers, and never migrates; the warehouse does. It connects as an RLS-bound `secretary_app` member.
 - **Web** (`overview/web`, a pnpm workspace package): React 19, Vite 7, TanStack Router + Query, Tailwind 4. It uses the TypeScript contract generated from `shared/` (`src/generated/contract.ts`).
-- **Pages:** Time (default: per-project totals for a day, week or month; the day's session timeline with a session drawer for detail and corrections; the day's corrections with undo; recalculating state; time-zone prompt), Inbox (unassigned time by folder or app: assign or add a rule), Activity (per-device day timeline of raw events; the table renders 300 rows at a time), Projects, Devices, Exclusions & pause windows.
+- **Pages:** Time (default: per-project totals for a day, week or month; the day's session timeline with a session drawer for detail and corrections; the day's corrections with undo; recalculating state; time-zone prompt), Inbox (unassigned time by folder or app: assign or add a rule), Reports (range up to a year, project filter, CSV export), Activity (per-device day timeline of raw events; the table renders 300 rows at a time), Projects, Devices, Privacy (exclusions, pause windows, and "Your data": export, delete a day, a device or everything).
 - **Queries:** default `staleTime` 30 s. The Time page polls every 5 s while days are recalculating.
 
 ## Engine Runtime

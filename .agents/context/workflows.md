@@ -68,3 +68,13 @@ Member reviews shared-project totals for a period → submits → submission bec
 ## Privacy Delete / Export
 
 User can export all their raw events (NDJSON) and delete by event, day, device, project, or all — deletion covers Postgres and the raw archive, then derived data is recalculated.
+
+Status: implemented for day, device and all (WH-12, WH-13, OV-12); by event and by project are planned, and there is no raw archive yet (WH-6).
+- **Export:** the dashboard streams every event of the user as NDJSON, read through RLS as that user.
+- **Delete:** `app_privacy_delete` (SECURITY DEFINER, user from `app_current_user_id()`) is the only path that deletes events.
+  - It removes the events, then the assignments, session evidence and overrides of those events.
+  - It queues the affected days to run now; the engine rewrites their sessions, ending empty when no events are left.
+  - A day delete also queues the neighbouring days, because intervals can cross midnight.
+  - `all` also removes sessions, coverage gaps, corrections, AI rows and the user's jobs; a day being calculated at that moment is queued again.
+  - Projects, rules, exclusions, devices and the account stay.
+- **Logging:** the dashboard asks for confirmation (typing DELETE for everything), and only counts are logged.

@@ -134,6 +134,8 @@ export interface TimeSummary extends JobState {
   total_seconds: number;
   assigned_seconds: number;
   unassigned_seconds: number;
+  unassigned_sessions?: number;
+  unassigned_days?: number;
   projects: ProjectTime[];
   days: {
     day: string;
@@ -251,6 +253,32 @@ export function signIn(): never {
   throw new ApiError(401, 'signed_out');
 }
 
+export type PrivacyScope = 'day' | 'device' | 'all';
+
+/** Download of all the user's raw events (NDJSON). */
+export const PRIVACY_EXPORT_URL = '/api/privacy/export.ndjson';
+
+/** Which projects a report covers: `projects` null = all; `unassigned` adds time no rule matched. */
+export interface ReportFilter {
+  projects: number[] | null;
+  unassigned: boolean;
+}
+
+export type ReportGroup = 'project' | 'day' | 'session';
+
+function reportQuery(start: string, end: string, filter: ReportFilter, group?: ReportGroup): string {
+  const q = new URLSearchParams({ start, end, unassigned: String(filter.unassigned) });
+  if (group) q.set('group', group);
+  // An empty selection still has to filter: -1 matches no project.
+  if (filter.projects) for (const id of filter.projects.length ? filter.projects : [-1]) q.append('project', String(id));
+  return q.toString();
+}
+
+/** A download link for the report as CSV (same totals as `api.report`). */
+export function reportCsvUrl(start: string, end: string, filter: ReportFilter, group: ReportGroup): string {
+  return `/api/reports/export.csv?${reportQuery(start, end, filter, group)}`;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -274,6 +302,10 @@ export const api = {
     return me;
   },
   setTimeZone: (time_zone: string) => request<{ time_zone: string }>('PUT', '/api/me/time_zone', { time_zone }),
+  privacyDelete: (body: { scope: PrivacyScope; day?: string; device_id?: number; confirm: true }) =>
+    request<{ deleted_events: number; queued_days: number }>('POST', '/api/privacy/delete', body),
+  report: (start: string, end: string, filter: ReportFilter) =>
+    request<TimeSummary>('GET', `/api/reports?${reportQuery(start, end, filter)}`),
   time: (start: string, end: string) =>
     request<TimeSummary>('GET', `/api/time?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   sessions: (day: string) => request<DaySessions>('GET', `/api/sessions?day=${encodeURIComponent(day)}`),
